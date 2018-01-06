@@ -1,25 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h4>
-        <span>Queued ({{ counts.queued }} items)</span>
-    </h4>
-    <table class="table table-condensed">
-        <tbody>
-            {% for style,row in status.queues %}
-            <tr style="{{ style }}">
-                {% for col in row %}
-                {% if 'tuple' in col.__class__.__name__ %}
-                <td>
-                    <a data-toggle="tooltip" href="#" title="{{ col[1] }}">{{ col[0] }}</a>
-                </td>
-                {% else %}
-                <td>{{ col }}</td>
-                {% endif %} {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<h4>
+    <span>Queued ({{ counts.queued }} items)</span>
+</h4>
+{% if status.errorMsg %}
+<h4>
+    <span>Gathering data failed :-(</span>
+</h4>
+<span>Exception: {{ status.errorMsg }}</span>
+{% else %}
+<table class="table table-condensed">
+    <tbody>
+        {% for style,row in status.queues %}
+        <tr style="{{ style }}">
+            {% for col in row %}
+            {% if 'tuple' in col.__class__.__name__ %}
+            <td>
+                <a data-toggle="tooltip" href="#" title="{{ col[1] }}">{{ col[0] }}</a>
+            </td>
+            {% else %}
+            <td>{{ col }}</td>
+            {% endif %} {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
 {% endblock %}

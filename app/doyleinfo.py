@@ -1,4 +1,5 @@
 import datetime
+import operator
 import os
 import sys
 import threading
@@ -16,6 +17,7 @@ from app.doylefile import DoyleFile
 serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
 
 doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '']
+
 
 class DoyleInfo(threading.Thread):
     ''' Main class that keeps and updates test info for queues and servers.'''
@@ -36,6 +38,10 @@ class DoyleInfo(threading.Thread):
         self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, self.queuesPath)
         self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, self.serversPath)
         self._clean()
+
+        # create database and pass it (as a static) to DoyleFile
+        self.doyleFileDb = DoyleFileDb()
+        DoyleFile.doyleFileDb = self.doyleFileDb
 
         threading.Thread.__init__(self)
         self.start()
@@ -166,6 +172,8 @@ class DoyleInfo(threading.Thread):
 #                        blueLightOn=100
 #            xmlrpc.client.ServerProxy('http://10.0.60.57:8000').blue(blueLightOn)
 
+#            raise Exception("testing failure to update")
+
             end = timer()
             print('Gathering info took %.4fs (hit %s / new %s / gone %s)' %
                   ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
@@ -178,58 +186,59 @@ class DoyleInfo(threading.Thread):
             self.lock.release()
 
     def getExecution(self):
+        ''' Get information about the executing tests and the servers. '''
+
+        errorMsg = None
+        rowsExe = []
+        rowsServer = []
 
         try:
             self.lock.acquire()
             start = timer()
 
             if self.dataException == None:
-                rowsExe = []
                 for server, files, dummy in self.serverFolder.items:
                     for doyleFile in files:
                         age = datetime.datetime.now() - doyleFile.firstExecutionTime
-                        style = 'color:Black' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'color:Orange' if age.total_seconds(
-                        ) < doyleFile.expectedExecutionTime[2] else 'color:Red'
+                        style = 'color:Black' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'color:Orange' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'color:Red'
                         row = ['%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
-                               server,
-                               '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
-                               ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file,
-                                'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
-                               doyleFile.type,
-                               doyleFile.target]
+                            server,
+                            '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
+                            ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file,
+                            'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
+                            doyleFile.type,
+                            doyleFile.target]
                         rowsExe.append((style, row))
 
-                rowsServer = []
                 for item in self.serverReport:
                     style = item[3]
                     row = [item[0], item[1], ', '.join(item[2])]
                     rowsServer.append((style, row))
-
-                return { 'exes':rowsExe, 'servers':rowsServer }
             else:
-                html = template("overviewfail", exceptionMsg=self.dataException)
+                errorMsg=self.dataException
 
             end = timer()
-            print('Building Executing HTML took %.4fs' % (end - start))
+            print('Building Executing info took %.4fs' % (end - start))
 
         except:
-            print('Building HTML failed with exception: %s' % traceback.format_exc())
-            html = 'Building HTML failed with exception: %s' % traceback.format_exc()
+            print('Gathering execution information failed with exception: %s' % traceback.format_exc())
+            errorMsg = 'Gathering execution information failed with exception: %s' % traceback.format_exc()
 
         finally:
             self.lock.release()
 
-        return html
-
+        return {'errorMsg': errorMsg, 'exes': rowsExe, 'servers': rowsServer}
 
     def getQueued(self):
+        ''' Get information about the queued tests. '''
+
+        errorMsg = None
+        rowsQueued = []
 
         try:
             self.lock.acquire()
-            start = timer()
 
             if self.dataException == None:
-                rowsQueued = []
                 for queue, files, dummy in self.queueFolder.items:
                     if len(files):
                         if queue.upper() in self.serverConfigs:
@@ -248,49 +257,50 @@ class DoyleInfo(threading.Thread):
                                    doyleFile.type,
                                    doyleFile.target]
                             rowsQueued.append((style, row))
-                return { 'queues':rowsQueued }
-            else:
-                html = template("overviewfail", exceptionMsg=self.dataException)
 
-            end = timer()
-            print('Building Queued HTML took %.4fs' % (end - start))
+                # sort on tfsbuildid
+                rowsQueued = sorted(rowsQueued, key=operator.itemgetter(operator.itemgetter(1),2))
+
+            else:
+                errorMsg = self.dataException
 
         except:
-            print('Building HTML failed with exception: %s' % traceback.format_exc())
-            html = 'Building HTML failed with exception: %s' % traceback.format_exc()
+            print('Gathering queue information failed with exception: %s' % traceback.format_exc())
+            errorMsg = 'Gathering queue information failed with exception: %s' % traceback.format_exc()
 
         finally:
             self.lock.release()
 
-        return html
+        return {'errorMsg': errorMsg, 'queues': rowsQueued}
 
     def getCounts(self):
-        ''' Get the number of entries executing and the number of entries queued. Displayed in base.html. '''
+        ''' Get the number of entries executing and the number of entries queued. '''
+
+        executing = '?'
+        queued = '?'
+
         try:
             self.lock.acquire()
-            return { 'executing':self.serverFolder.count, 'queued':self.queueFolder.count}
+            if self.dataException == None:
+                executing = self.serverFolder.count
+                queued = self.queueFolder.count
 
         except:
-            print('Building HTML failed with exception: %s' % traceback.format_exc())
-            html = 'Building HTML failed with exception: %s' % traceback.format_exc()
+            print('Getting counts failed with exception: %s' % traceback.format_exc())
 
         finally:
             self.lock.release()
 
-        return html
-
+        return {'executing': self.serverFolder.count, 'queued': self.queueFolder.count}
 
     def getHistory(self, doyleServer):
         ''' Get a list of what was excecuted on a given doyleServer.'''
 
-        if DoyleFile.doyleFileDb == None:
-            DoyleFile.doyleFileDb = DoyleFileDb()
-
-        entriesSorted = DoyleFile.doyleFileDb.getDoyleHistory(doyleServer)
+        entriesSorted = self.doyleFileDb.getDoyleHistory(doyleServer)
 
         # prepare the list for the HTML template
         toDisplay = []
         for x in entriesSorted:
             toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], str(x[3])]), x[4]))
 
-        return { 'history': toDisplay}
+        return {'history': toDisplay}

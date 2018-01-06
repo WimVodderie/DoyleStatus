@@ -1,4 +1,4 @@
-from app import doylefile
+from app.doylefile import DoyleFile
 
 class DoyleFileCache:
     def __init__(self):
@@ -8,7 +8,7 @@ class DoyleFileCache:
 
     def getDoyleFile(self, path, file):
         if file not in self.cache:
-            doyleFile = doylefile.DoyleFile(path, file)
+            doyleFile = DoyleFile(path, file)
             doyleFile.load()
             self.cache[file] = [0, doyleFile]
             self.addCount = self.addCount + 1

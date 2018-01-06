@@ -10,13 +10,14 @@ from timeit import default_timer as timer
 
 dataBasePaths = ['/home/dfe01/doyle.db', 'doyle.db']
 
+
 class DoyleFileDb(threading.Thread):
 
     TABLE_NAME = 'executed_tests'
 
     def __init__(self):
         super(DoyleFileDb, self).__init__()
-        self.reqs=Queue()
+        self.reqs = Queue()
         self.start()
 
     def run(self):
@@ -45,23 +46,23 @@ class DoyleFileDb(threading.Thread):
         while True:
             req, arg, res = self.reqs.get()
 
-            if req=='loadFile':
+            if req == 'loadFile':
                 res.put(self._loadFile(arg))
-            if req=='addFile':
+            if req == 'addFile':
                 self._addFile(arg)
-            if req=='updateFile':
+            if req == 'updateFile':
                 self._updateFile(arg)
-            if req=='getExecutionTimes':
+            if req == 'getExecutionTimes':
                 res.put(self._getExecutionTimes(*arg))
-            if req=='getExpectedExecutionTime':
+            if req == 'getExpectedExecutionTime':
                 res.put(self._getExpectedExecutionTime(arg))
-            if req=='getDoyleHistory':
+            if req == 'getDoyleHistory':
                 res.put(self._getDoyleHistory(arg))
-            if req=='--close--':
+            if req == '--close--':
                 break
 
     def loadFile(self, doyleFile):
-        res=Queue()
+        res = Queue()
         self.reqs.put(('loadFile', doyleFile, res))
         return res.get()
 
@@ -93,7 +94,6 @@ class DoyleFileDb(threading.Thread):
         else:
             return False
 
-
     def addFile(self, doyleFile):
         self.reqs.put(('addFile', doyleFile, None))
 
@@ -104,7 +104,6 @@ class DoyleFileDb(threading.Thread):
                                                                                                                                                                                                      doyleFile.target, doyleFile.type, doyleFile.server, doyleFile.queue, doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, doyleFile.xbebuildid, doyleFile.tfsbuildid, doyleFile.queuedTime, ))
         self.db.commit()
         print('%s: inserted in db' % doyleFile.file)
-
 
     def updateFile(self, doyleFile):
         self.reqs.put(('updateFile', doyleFile, None))
@@ -118,9 +117,8 @@ class DoyleFileDb(threading.Thread):
         print('%s: saved to db (exec time %s -> %s @ %s)' %
               (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
 
-
     def getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
-        res=Queue()
+        res = Queue()
         self.reqs.put(('getExecutionTimes', (xbetree, xbegroup, xbeproject, target), res))
         return res.get()
 
@@ -148,9 +146,8 @@ class DoyleFileDb(threading.Thread):
 
         return times
 
-
     def getExpectedExecutionTime(self, doyleFile):
-        res=Queue()
+        res = Queue()
         self.reqs.put(('getExpectedExecutionTime', doyleFile, res))
         return res.get()
 
@@ -203,9 +200,8 @@ class DoyleFileDb(threading.Thread):
 
         return (averageTime, warnTime, failTime)
 
-
     def getDoyleHistory(self, doyleServer):
-        res=Queue()
+        res = Queue()
         self.reqs.put(('getDoyleHistory', doyleServer, res))
         return res.get()
 

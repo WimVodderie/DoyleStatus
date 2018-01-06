@@ -1,48 +1,51 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h4>
-        <span>Executing ({{ counts.executing }} of {{ counts.executing }}+{{ counts.queued }} items)</span>
-    </h4>
-    <table class="table table-condensed">
-        <tbody>
-            {% for style,row in status.exes %}
-            <tr style="{{ style }}">
-                {% for col in row %}
-                {% if 'tuple' in col.__class__.__name__ %}
-                <td>
-                    <a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a>
-                </td>
-                {% else %}
-                <td
-                    >{{col}}
-                </td>
-                {% endif %}
-                {% endfor %}
-            </tr>
+<h4>
+    <span>Executing ({{ counts.executing }} of {{ counts.executing }}+{{ counts.queued }} items)</span>
+</h4>
+{% if status.errorMsg %}
+<h4>
+    <span>Gathering data failed :-(</span>
+</h4>
+<span>Exception: {{ status.errorMsg }}</span>
+{% else %}
+<table class="table table-condensed">
+    <tbody>
+        {% for style,row in status.exes %}
+        <tr style="{{ style }}">
+            {% for col in row %}
+            {% if 'tuple' in col.__class__.__name__ %}
+            <td>
+                <a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a>
+            </td>
+            {% else %}
+            <td
+                >{{col}}
+            </td>
+            {% endif %}
             {% endfor %}
-        </tbody>
-    </table>
-</div>
-<div class="container">
-    <h4>
-        <span>Servers</span>
-    </h4>
-    {% if status.servers %}
-    <table class="table table-condensed">
-        <tbody>
-            {% for style,row in status.servers %}
-            <tr style="{{ style }}">
-                {% for col in row %}
-                <td>{{col}}</td>
-                {% endfor %}
-            </tr>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<h4>
+    <span>Servers</span>
+</h4>
+{% if status.servers %}
+<table class="table table-condensed">
+    <tbody>
+        {% for style,row in status.servers %}
+        <tr style="{{ style }}">
+            {% for col in row %}
+            <td>{{col}}</td>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>nothing to report</p>
-    {% endif %}
-</div>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>nothing to report</p>
+{% endif %}
+{% endif %}
 {% endblock %}

@@ -30,10 +30,6 @@ class DoyleFile:
 
         self.expectedExecutionTime = None
 
-        # first time initialize database
-        if DoyleFile.doyleFileDb == None:
-            DoyleFile.doyleFileDb = doylefiledb.DoyleFileDb()
-
     def dump(self):
         print('path       %s' % self.path)
         print('file       %s' % self.file)
