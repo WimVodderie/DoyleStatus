@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Select server</h1>
+  <form action="" method="post" name="login">
+    {{ form.hidden_tag() }}
+    <p>
+      {{ form.servername.label }}
+      <br> {{ form.servername(size=64) }}
+      <br> {% for error in form.servername.errors %}
+      <span style="color: red;">[{{ error }}]</span>
+      {% endfor %}
+    </p>
+    <p>{{ form.submit() }}</p>
+  </form>
+</div>
+{% endblock %}
