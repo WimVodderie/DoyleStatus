@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <head>
     <title>Doyle status ({{ counts.executing }} / {{ counts.queued }})</title>
     <meta content="60" http-equiv="refresh">
@@ -10,15 +11,40 @@
 </head>
 
 <body>
-    <div class="container-fluid">
-        <nav class="navbar navbar-light bg-light">
-            <a class="navbar-brand" href="{{ url_for('executing') }}">Executing ({{ counts.executing }})</a>
-            <a class="navbar-brand" href="{{ url_for('queued') }}">Queued ({{ counts.queued }})</a>
-            <a class="navbar-brand" href="{{ url_for('selectServer') }}">History</a>
-        </nav>
-        {% block content %}
-        {% endblock %}
-    </div>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand">Doyle</a>
+            </div>
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    {% if request.path == url_for('executing') %}
+                    <li class="active">
+                    {% else %}
+                    <li>
+                    {% endif %}
+                        <a href="{{ url_for('executing') }}">Executing ({{ counts.executing }})</a>
+                    </li>
+                    {% if request.path == url_for('queued') %}
+                    <li class="active">
+                    {% else %}
+                    <li>
+                    {% endif %}
+                        <a href="{{ url_for('queued') }}">Queued ({{ counts.queued }})</a>
+                    </li>
+                    {% if request.path == url_for('selectServer') %}
+                    <li class="active">
+                    {% else %}
+                    <li>
+                    {% endif %}
+                        <a href="{{ url_for('selectServer') }}">History</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% block content %}
+    {% endblock %}
 </body>
 
 </html>

@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h4>
-    <span>Executing ({{ counts.executing }} of {{ counts.executing }}+{{ counts.queued }} items)</span>
-</h4>
 {% if status.errorMsg %}
 <h4>
     <span>Gathering data failed :-(</span>
@@ -12,9 +9,9 @@
 {% else %}
 <table class="table table-condensed">
     <tbody>
-        {% for style,row in status.exes %}
-        <tr style="{{ style }}">
-            {% for col in row %}
+        {% for row in status.exes %}
+        <tr style="{{ row[0] }}">
+            {% for col in row[1:] %}
             {% if 'tuple' in col.__class__.__name__ %}
             <td>
                 <a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a>
@@ -35,9 +32,9 @@
 {% if status.servers %}
 <table class="table table-condensed">
     <tbody>
-        {% for style,row in status.servers %}
-        <tr style="{{ style }}">
-            {% for col in row %}
+        {% for row in status.servers %}
+        <tr style="{{ row[0] }}">
+            {% for col in row[1:] %}
             <td>{{col}}</td>
             {% endfor %}
         </tr>

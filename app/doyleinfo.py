@@ -194,31 +194,28 @@ class DoyleInfo(threading.Thread):
 
         try:
             self.lock.acquire()
-            start = timer()
 
             if self.dataException == None:
                 for server, files, dummy in self.serverFolder.items:
                     for doyleFile in files:
                         age = datetime.datetime.now() - doyleFile.firstExecutionTime
                         style = 'color:Black' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'color:Orange' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'color:Red'
-                        row = ['%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
+                        row = [style,
+                            '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                             server,
                             '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
                             ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file,
                             'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
                             doyleFile.type,
                             doyleFile.target]
-                        rowsExe.append((style, row))
+                        rowsExe.append(row)
 
                 for item in self.serverReport:
                     style = item[3]
-                    row = [item[0], item[1], ', '.join(item[2])]
-                    rowsServer.append((style, row))
+                    row = [item[3], item[0], item[1], ', '.join(item[2])]
+                    rowsServer.append(row)
             else:
                 errorMsg=self.dataException
-
-            end = timer()
-            print('Building Executing info took %.4fs' % (end - start))
 
         except:
             print('Gathering execution information failed with exception: %s' % traceback.format_exc())
@@ -249,17 +246,17 @@ class DoyleInfo(threading.Thread):
                         for doyleFile in files:
                             age = datetime.datetime.now() - doyleFile.queuedTime
                             style = 'color:Black' if age.total_seconds() < 2 * 24 * 3600 else 'color:Red'
-                            row = [self.ageToString(age),
+                            row = [style,self.ageToString(age),
                                    (queue, serverString),
                                    '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
                                    ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
                                               '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
                                    doyleFile.type,
                                    doyleFile.target]
-                            rowsQueued.append((style, row))
+                            rowsQueued.append(row)
 
                 # sort on tfsbuildid
-                rowsQueued = sorted(rowsQueued, key=operator.itemgetter(operator.itemgetter(1),2))
+                rowsQueued = sorted(rowsQueued, key=operator.itemgetter(3))
 
             else:
                 errorMsg = self.dataException

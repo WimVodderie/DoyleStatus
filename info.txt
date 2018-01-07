@@ -1,0 +1,19 @@
+#create folder for project
+cd <folder>
+#create virtual environment
+py -m venv venv
+#activate the virtual environment (in cmd.exe)
+.\venv\Scripts\Activate.bat
+#install flask
+pip install flask
+#create app folder
+mkdir app
+#create python files
+app\__init__.py
+app\routes.py
+<app>.py
+set FLASK_APP=<app>.py
+flask run
+
+#install flask-wtf
+py -m pip install flask-wtf
