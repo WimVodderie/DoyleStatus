@@ -124,8 +124,9 @@ class DoyleInfo(threading.Thread):
                 style = 'default'
 
                 # there are files executing on this server
-        #        if len(files)>0:
-        #            serverMessages.append('Executing')
+                if len(files)>0:
+                    serverMessages.append('Executing')
+
                 # server has an upgrade pending
                 if upgradePending == True:
                     serverMessages.append('Server has an upgrade pending')
@@ -185,12 +186,10 @@ class DoyleInfo(threading.Thread):
         finally:
             self.lock.release()
 
-    def getExecution(self):
-        ''' Get information about the executing tests and the servers. '''
-
-        errorMsg = None
-        rowsExe = []
-        rowsServer = []
+        # getExecuting
+        self.errorMsg = None
+        self.rowsExe = []
+        self.rowsServer = []
 
         try:
             self.lock.acquire()
@@ -208,28 +207,24 @@ class DoyleInfo(threading.Thread):
                             'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
                             doyleFile.type,
                             doyleFile.target]
-                        rowsExe.append(row)
+                        self.rowsExe.append(row)
 
                 for item in self.serverReport:
                     row = [item[0], item[1], item[2], ', '.join(item[3])]
-                    rowsServer.append(row)
+                    self.rowsServer.append(row)
             else:
-                errorMsg=self.dataException
+                self.errorMsg=self.dataException
 
         except:
             print('Gathering execution information failed with exception: %s' % traceback.format_exc())
-            errorMsg = 'Gathering execution information failed with exception: %s' % traceback.format_exc()
+            self.errorMsg = 'Gathering execution information failed with exception: %s' % traceback.format_exc()
 
         finally:
             self.lock.release()
 
-        return {'errorMsg': errorMsg, 'exes': rowsExe, 'servers': rowsServer}
-
-    def getQueued(self):
-        ''' Get information about the queued tests. '''
-
-        errorMsg = None
-        rowsQueued = []
+        # getQueued
+        self.errorMsg = None
+        self.rowsQueued = []
 
         try:
             self.lock.acquire()
@@ -252,34 +247,32 @@ class DoyleInfo(threading.Thread):
                                               '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
                                    doyleFile.type,
                                    doyleFile.target]
-                            rowsQueued.append(row)
+                            self.rowsQueued.append(row)
 
                 # sort on tfsbuildid
-                rowsQueued = sorted(rowsQueued, key=operator.itemgetter(3))
+                self.rowsQueued = sorted(self.rowsQueued, key=operator.itemgetter(3))
 
             else:
-                errorMsg = self.dataException
+                self.errorMsg = self.dataException
 
         except:
             print('Gathering queue information failed with exception: %s' % traceback.format_exc())
-            errorMsg = 'Gathering queue information failed with exception: %s' % traceback.format_exc()
+            self.errorMsg = 'Gathering queue information failed with exception: %s' % traceback.format_exc()
 
         finally:
             self.lock.release()
 
-        return {'errorMsg': errorMsg, 'queues': rowsQueued}
-
-    def getCounts(self):
-        ''' Get the number of entries executing and the number of entries queued. '''
-
-        executing = '?'
-        queued = '?'
+        # getCounts
+        self.executing = '?'
+        self.queued = '?'
+        self.servers = '?'
 
         try:
             self.lock.acquire()
             if self.dataException == None:
-                executing = self.serverFolder.count
-                queued = self.queueFolder.count
+                self.executing = self.serverFolder.count
+                self.queued = self.queueFolder.count
+                self.servers = len(self.rowsServer)
 
         except:
             print('Getting counts failed with exception: %s' % traceback.format_exc())
@@ -287,7 +280,21 @@ class DoyleInfo(threading.Thread):
         finally:
             self.lock.release()
 
-        return {'executing': self.serverFolder.count, 'queued': self.queueFolder.count}
+    def getExecution(self):
+        ''' Get information about the executing tests and the servers. '''
+        return {'errorMsg': self.errorMsg, 'exes': self.rowsExe}
+
+    def getQueued(self):
+        ''' Get information about the queued tests. '''
+        return {'errorMsg': self.errorMsg, 'queues': self.rowsQueued}
+
+    def getServers(self):
+        ''' Get information about the servers. '''
+        return {'errorMsg': self.errorMsg, 'servers': self.rowsServer}
+
+    def getCounts(self):
+        ''' Get the number of entries executing and the number of entries queued. '''
+        return {'executing': self.serverFolder.count, 'queued': self.queueFolder.count, 'servers': self.servers }
 
     def getHistory(self, doyleServer):
         ''' Get a list of what was excecuted on a given doyleServer.'''

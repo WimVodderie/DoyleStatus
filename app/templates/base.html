@@ -10,6 +10,16 @@
     <script>$(document).ready(function () { $('[data-toggle]=&quot;tooltip&quot;').tooltip(); })</script>
 </head>
 
+{% macro active_nav(navpath,navdisp,alert=False,extradisp='') -%}
+{% if request.path == url_for(navpath) %}
+<li class="active">
+{% else %}
+<li>
+{% endif %}
+    <a href="{{ url_for(navpath) }}" {% if alert %} style="color:red;" {% endif %} >{{ navdisp }} {{ extradisp }}</a>
+</li>
+{%- endmacro %}
+
 <body>
     <nav class="navbar navbar-default">
         <div class="container-fluid">
@@ -18,33 +28,18 @@
             </div>
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
-                    {% if request.path == url_for('executing') %}
-                    <li class="active">
-                    {% else %}
-                    <li>
-                    {% endif %}
-                        <a href="{{ url_for('executing') }}">Executing ({{ counts.executing }})</a>
-                    </li>
-                    {% if request.path == url_for('queued') %}
-                    <li class="active">
-                    {% else %}
-                    <li>
-                    {% endif %}
-                        <a href="{{ url_for('queued') }}">Queued ({{ counts.queued }})</a>
-                    </li>
-                    {% if request.path == url_for('selectServer') %}
-                    <li class="active">
-                    {% else %}
-                    <li>
-                    {% endif %}
-                        <a href="{{ url_for('selectServer') }}">History</a>
-                    </li>
+                    {{ active_nav('executing','Executing',False,'(' ~ counts.executing ~ ')') }}
+                    {{ active_nav('queued','Queued',False,'(' ~ counts.queued ~ ')') }}
+                    {{ active_nav('servers','Servers',False,'(' ~ counts.servers ~ ')') }}
+                    {{ active_nav('selectServer','History') }}
                 </ul>
             </div>
         </div>
     </nav>
+    <div style="margin-left:20px;">
     {% block content %}
     {% endblock %}
+    </div>
 </body>
 
 </html>

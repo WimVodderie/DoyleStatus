@@ -10,6 +10,9 @@ doyleInfo = DoyleInfo()
 
 @app.route('/')
 @app.route('/index')
+def index():
+    return redirect('/executing')
+
 @app.route('/executing')
 def executing():
     return render_template('executing.html', counts=doyleInfo.getCounts(), status=doyleInfo.getExecution())
@@ -28,6 +31,11 @@ def selectServer():
         return redirect('/history/%s' % serverName)
     else:
         return render_template('select-server.html', counts=doyleInfo.getCounts(), form=form)
+
+
+@app.route('/servers')
+def servers():
+    return render_template('servers.html', counts=doyleInfo.getCounts(), status=doyleInfo.getServers())
 
 
 @app.route('/history/<serverName>')

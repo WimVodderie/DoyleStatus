@@ -7,24 +7,23 @@
 </h4>
 <span>Exception: {{ status.errorMsg }}</span>
 {% else %}
+<h4>
+    <span>Servers</span>
+</h4>
+{% if status.servers %}
 <table class="table table-striped table-condensed">
-    <tbody>
-        {% for row in status.exes %}
+        <tbody>
+        {% for row in status.servers %}
         <tr class="{{ row[0] }}">
             {% for col in row[1:] %}
-            {% if 'tuple' in col.__class__.__name__ %}
-            <td>
-                <a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a>
-            </td>
-            {% else %}
-            <td
-                >{{col}}
-            </td>
-            {% endif %}
+            <td>{{col}}</td>
             {% endfor %}
         </tr>
         {% endfor %}
     </tbody>
 </table>
+{% else %}
+<p>nothing to report</p>
+{% endif %}
 {% endif %}
 {% endblock %}
