@@ -121,7 +121,7 @@ class DoyleInfo(threading.Thread):
             for server, files, upgradePending in self.serverFolder.items:
                 # should we display info about this server
                 serverMessages = []
-                lineColor = 'color:Black'
+                style = 'default'
 
                 # there are files executing on this server
         #        if len(files)>0:
@@ -129,12 +129,12 @@ class DoyleInfo(threading.Thread):
                 # server has an upgrade pending
                 if upgradePending == True:
                     serverMessages.append('Server has an upgrade pending')
-                    lineColor = 'color:Orange'
+                    style = 'info'
 
                 # server should be busy but is not
                 if len(files) == 0 and server in self.serversForAllQueues:
                     serverMessages.append('Server should be busy but is not')
-                    lineColor = 'color:Red'
+                    style = 'warning'
 
                 # check if doyle server is active
                 doyleServerAge = '---'
@@ -146,7 +146,7 @@ class DoyleInfo(threading.Thread):
                         if age > datetime.timedelta(minutes=5):
                             doyleServerAge = self.ageToString(age)
                             serverMessages.append('DoyleServer Not Running')
-                            lineColor = 'color:Red'
+                            style = 'warning'
 
                 # check ping result
         #        if server not in serverBlackList:
@@ -158,10 +158,10 @@ class DoyleInfo(threading.Thread):
         #                    msg='Ping Not Responding'
         #            if len(msg)>0:
         #                serverMessages.append(msg)
-        #                lineColor='color:Red'
+        #                style='warning'
 
                 if len(serverMessages) > 0:
-                    self.serverReport.append((doyleServerAge, server, serverMessages, lineColor))
+                    self.serverReport.append((style,doyleServerAge, server, serverMessages))
 
             # check if we should switch on the blue light
 #            blueLightOn=0
@@ -199,7 +199,7 @@ class DoyleInfo(threading.Thread):
                 for server, files, dummy in self.serverFolder.items:
                     for doyleFile in files:
                         age = datetime.datetime.now() - doyleFile.firstExecutionTime
-                        style = 'color:Black' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'color:Orange' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'color:Red'
+                        style = 'default' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'info' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'warning'
                         row = [style,
                             '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                             server,
@@ -211,8 +211,7 @@ class DoyleInfo(threading.Thread):
                         rowsExe.append(row)
 
                 for item in self.serverReport:
-                    style = item[3]
-                    row = [item[3], item[0], item[1], ', '.join(item[2])]
+                    row = [item[0], item[1], item[2], ', '.join(item[3])]
                     rowsServer.append(row)
             else:
                 errorMsg=self.dataException
@@ -245,7 +244,7 @@ class DoyleInfo(threading.Thread):
 
                         for doyleFile in files:
                             age = datetime.datetime.now() - doyleFile.queuedTime
-                            style = 'color:Black' if age.total_seconds() < 2 * 24 * 3600 else 'color:Red'
+                            style = 'default' if age.total_seconds() < 2 * 24 * 3600 else 'warning'
                             row = [style,self.ageToString(age),
                                    (queue, serverString),
                                    '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
