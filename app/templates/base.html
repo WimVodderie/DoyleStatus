@@ -28,6 +28,7 @@
             </div>
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
+                    {{ active_nav('overview','Overview') }}
                     {{ active_nav('executing','Executing',False,'(' ~ counts.executing ~ ')') }}
                     {{ active_nav('queued','Queued',False,'(' ~ counts.queued ~ ')') }}
                     {{ active_nav('servers','Servers',False,'(' ~ counts.servers ~ ')') }}

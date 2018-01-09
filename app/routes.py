@@ -11,16 +11,26 @@ doyleInfo = DoyleInfo()
 @app.route('/')
 @app.route('/index')
 def index():
-    return redirect('/executing')
+    return redirect('/overview')
+
+@app.route('/overview')
+def overview():
+    return render_template('overview.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), exes=doyleInfo.getExecution(), servers=doyleInfo.getServers(), queues=doyleInfo.getQueued())
+
 
 @app.route('/executing')
 def executing():
-    return render_template('executing.html', counts=doyleInfo.getCounts(), status=doyleInfo.getExecution())
+    return render_template('executing.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), exes=doyleInfo.getExecution())
 
 
 @app.route('/queued')
 def queued():
-    return render_template('queued.html', counts=doyleInfo.getCounts(), status=doyleInfo.getQueued())
+    return render_template('queued.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), queues=doyleInfo.getQueued())
+
+
+@app.route('/servers')
+def servers():
+    return render_template('servers.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), servers=doyleInfo.getServers())
 
 
 @app.route('/select-server', methods=['GET', 'POST'])
@@ -31,11 +41,6 @@ def selectServer():
         return redirect('/history/%s' % serverName)
     else:
         return render_template('select-server.html', counts=doyleInfo.getCounts(), form=form)
-
-
-@app.route('/servers')
-def servers():
-    return render_template('servers.html', counts=doyleInfo.getCounts(), status=doyleInfo.getServers())
 
 
 @app.route('/history/<serverName>')

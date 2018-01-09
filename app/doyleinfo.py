@@ -130,12 +130,12 @@ class DoyleInfo(threading.Thread):
                 # server has an upgrade pending
                 if upgradePending == True:
                     serverMessages.append('Server has an upgrade pending')
-                    style = 'info'
+                    style = 'warning'
 
                 # server should be busy but is not
                 if len(files) == 0 and server in self.serversForAllQueues:
                     serverMessages.append('Server should be busy but is not')
-                    style = 'warning'
+                    style = 'danger'
 
                 # check if doyle server is active
                 doyleServerAge = '---'
@@ -147,7 +147,7 @@ class DoyleInfo(threading.Thread):
                         if age > datetime.timedelta(minutes=5):
                             doyleServerAge = self.ageToString(age)
                             serverMessages.append('DoyleServer Not Running')
-                            style = 'warning'
+                            style = 'danger'
 
                 # check ping result
         #        if server not in serverBlackList:
@@ -159,7 +159,7 @@ class DoyleInfo(threading.Thread):
         #                    msg='Ping Not Responding'
         #            if len(msg)>0:
         #                serverMessages.append(msg)
-        #                style='warning'
+        #                style='danger'
 
                 if len(serverMessages) > 0:
                     self.serverReport.append((style,doyleServerAge, server, serverMessages))
@@ -198,7 +198,7 @@ class DoyleInfo(threading.Thread):
                 for server, files, dummy in self.serverFolder.items:
                     for doyleFile in files:
                         age = datetime.datetime.now() - doyleFile.firstExecutionTime
-                        style = 'default' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'info' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'warning'
+                        style = 'default' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'warning' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'danger'
                         row = [style,
                             '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                             server,
@@ -280,17 +280,21 @@ class DoyleInfo(threading.Thread):
         finally:
             self.lock.release()
 
+    def getErrorMsg(self):
+        ''' Get the error message if an error has occured during processing, will return None when no error has occured. '''
+        return self.errorMsg
+
     def getExecution(self):
         ''' Get information about the executing tests and the servers. '''
-        return {'errorMsg': self.errorMsg, 'exes': self.rowsExe}
+        return self.rowsExe
 
     def getQueued(self):
         ''' Get information about the queued tests. '''
-        return {'errorMsg': self.errorMsg, 'queues': self.rowsQueued}
+        return self.rowsQueued
 
     def getServers(self):
         ''' Get information about the servers. '''
-        return {'errorMsg': self.errorMsg, 'servers': self.rowsServer}
+        return self.rowsServer
 
     def getCounts(self):
         ''' Get the number of entries executing and the number of entries queued. '''

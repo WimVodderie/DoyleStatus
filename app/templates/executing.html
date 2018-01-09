@@ -1,21 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if status.errorMsg %}
+{% if errorMsg %}
 <h4>
     <span>Gathering data failed :-(</span>
 </h4>
-<span>Exception: {{ status.errorMsg }}</span>
+<span>Exception: {{ errorMsg }}</span>
 {% else %}
 <table class="table table-striped table-condensed">
     <tbody>
-        {% for row in status.exes %}
+        {% for row in exes %}
         <tr class="{{ row[0] }}">
             {% for col in row[1:] %}
             {% if 'tuple' in col.__class__.__name__ %}
-            <td>
-                <a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a>
-            </td>
+            <td><a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a></td>
             {% else %}
             <td
                 >{{col}}
