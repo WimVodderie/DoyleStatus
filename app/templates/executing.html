@@ -15,9 +15,7 @@
             {% if 'tuple' in col.__class__.__name__ %}
             <td><a data-toggle="tooltip" href="{{ col[2] }}" title="{{ col[1] }}">{{ col[0] }}</a></td>
             {% else %}
-            <td
-                >{{col}}
-            </td>
+            <td>{{col}}</td>
             {% endif %}
             {% endfor %}
         </tr>

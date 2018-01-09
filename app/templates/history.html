@@ -9,9 +9,7 @@
     {% for row in status.history %}
     <tr>
         {% for col in row %} {% if 'tuple' in col.__class__.__name__ %}
-        <td>
-            <a data-toggle="tooltip" href="#" title="{{ col[1] }}">{{ col[0] }}</a>
-        </td>
+        <td><a data-toggle="tooltip" href="#" title="{{ col[1] }}">{{ col[0] }}</a></td>
         {% else %}
         <td>{{ col }}</td>
         {% endif %} {% endfor %}

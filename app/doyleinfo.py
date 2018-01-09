@@ -37,6 +37,8 @@ class DoyleInfo(threading.Thread):
         self.lock = threading.Lock()
         self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, self.queuesPath)
         self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, self.serversPath)
+
+        self.errorMsg = 'The information is still being gathered.'
         self._clean()
 
         # create database and pass it (as a static) to DoyleFile
@@ -53,11 +55,15 @@ class DoyleInfo(threading.Thread):
 
     def _clean(self):
         self.serverConfigs = []
-        self.doyleServerAges = {}
         self.serversForAllQueues = []
         self.serverReport = []
-        self.dataException = None
         self.cache.resetUsedCount()
+        self.servers = []
+        self.serversAlerted = []
+        self.executingTests = []
+        self.executingTestsAlert=False
+        self.queuedTests = []
+        self.queuedTestsAlert=False
 
     def ageToString(self, age):
         if age.days > 0:
@@ -91,24 +97,16 @@ class DoyleInfo(threading.Thread):
 
     def _update(self):
         try:
-            self.lock.acquire()
-            start = timer()
-
             self._clean()
 
+            start = timer()
             self.queueFolder.update(self.cache)
             self.serverFolder.update(self.cache)
-
             self.cache.removeUnusedEntries()
+            end = timer()
+            print('Gathering info took %.4fs (hit %s / new %s / gone %s)' % ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
 
             self.serverConfigs = self.getServerConfigs(self.serversPath)
-
-            # find out which doyleservers are still running
-            for server, files, dummy in self.serverFolder.items:
-                aliveFile = os.path.join(self.serversPath, server, 'alive.dat')
-                if os.path.isfile(aliveFile):
-                    age = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(aliveFile))
-                    self.doyleServerAges[server] = age
 
             # build a list of servers that should be handling the queues
             for queue, files, dummy in self.queueFolder.items:
@@ -117,7 +115,8 @@ class DoyleInfo(threading.Thread):
                         self.serversForAllQueues.extend(self.serverConfigs[queue.upper()])
             self.serversForAllQueues = list(set(self.serversForAllQueues))
 
-            # compile a list of servers to report
+            # compile two lists with servers to report: the first list has all the servers, the second has only the servers that have non-default style
+            # compile a list with all executing tests
             for server, files, upgradePending in self.serverFolder.items:
                 # should we display info about this server
                 serverMessages = []
@@ -140,14 +139,15 @@ class DoyleInfo(threading.Thread):
                 # check if doyle server is active
                 doyleServerAge = '---'
                 if server not in serverBlackList:
-                    if server not in self.doyleServerAges:
-                        serverMessages.append('DoyleServer status unknown')
-                    else:
-                        age = self.doyleServerAges[server]
+                    aliveFile = os.path.join(self.serversPath, server, 'alive.dat')
+                    if os.path.isfile(aliveFile):
+                        age = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(aliveFile))
                         if age > datetime.timedelta(minutes=5):
                             doyleServerAge = self.ageToString(age)
                             serverMessages.append('DoyleServer Not Running')
                             style = 'danger'
+                    else:
+                        serverMessages.append('DoyleServer status unknown')
 
                 # check ping result
         #        if server not in serverBlackList:
@@ -162,7 +162,32 @@ class DoyleInfo(threading.Thread):
         #                style='danger'
 
                 if len(serverMessages) > 0:
-                    self.serverReport.append((style,doyleServerAge, server, serverMessages))
+                    row = [style, doyleServerAge, server, ', '.join(serverMessages)]
+                    if style!='default':
+                        self.serversAlerted.append(row)
+                    self.servers.append(row)
+
+                for doyleFile in files:
+                    style = 'default'
+                    age = datetime.datetime.now() - doyleFile.firstExecutionTime
+                    if age.total_seconds() > doyleFile.expectedExecutionTime[2]:
+                        style='danger'
+                        self.executingTestsAlert=True
+                    elif age.total_seconds() > doyleFile.expectedExecutionTime[1]:
+                        style='warning'
+                        self.executingTestsAlert=True
+                    row = [style,
+                           '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
+                           server,
+                           '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
+                           ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]),
+                            doyleFile.file,
+                            'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
+                            '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
+                        doyleFile.type,
+                        doyleFile.target]
+                    self.executingTests.append(row)
+
 
             # check if we should switch on the blue light
 #            blueLightOn=0
@@ -175,113 +200,38 @@ class DoyleInfo(threading.Thread):
 
 #            raise Exception("testing failure to update")
 
-            end = timer()
-            print('Gathering info took %.4fs (hit %s / new %s / gone %s)' %
-                  ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
 
-        except:
-            print('Gathering info failed with exception: %s' % traceback.format_exc())
-            self.dataException = traceback.format_exc()
-
-        finally:
-            self.lock.release()
-
-        # getExecuting
-        self.errorMsg = None
-        self.rowsExe = []
-        self.rowsServer = []            # all the servers
-        self.rowsServerFailed = []      # only the servers that have something to report
-
-        try:
-            self.lock.acquire()
-
-            if self.dataException == None:
-                for server, files, dummy in self.serverFolder.items:
+            # getQueued
+            for queue, files, dummy in self.queueFolder.items:
+                if len(files):
+                    if queue.upper() in self.serverConfigs:
+                        serverString = ','.join(self.serverConfigs[queue.upper()])
+                    else:
+                        serverString = 'No servers listening on this queue !!'
                     for doyleFile in files:
-                        age = datetime.datetime.now() - doyleFile.firstExecutionTime
-                        style = 'default' if age.total_seconds() < doyleFile.expectedExecutionTime[1] else 'warning' if age.total_seconds() < doyleFile.expectedExecutionTime[2] else 'danger'
-                        row = [style,
-                            '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
-                            server,
-                            '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
-                            ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file,
-                            'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
-                            doyleFile.type,
-                            doyleFile.target]
-                        self.rowsExe.append(row)
+                        age = datetime.datetime.now() - doyleFile.queuedTime
+                        style = 'default'
+                        if age.total_seconds() > 2 * 24 * 3600:
+                            style = 'warning'
+                            self.queuedTestsAlert=True
+                        row = [style,self.ageToString(age),
+                                (queue, serverString),
+                                '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
+                                ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
+                                 '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
+                                doyleFile.type,
+                                doyleFile.target]
+                        self.queuedTests.append(row)
 
-                for item in self.serverReport:
-                    row = [item[0], item[1], item[2], ', '.join(item[3])]
-                    if item[0]!='default':
-                        self.rowsServerFailed.append(row)
-                    self.rowsServer.append(row)
-            else:
-                self.errorMsg=self.dataException
+            # sort on tfsbuildid
+            self.queuedTests = sorted(self.queuedTests, key=operator.itemgetter(3))
 
+            # if we got here without exception, there is no error
+            self.errorMsg=None
         except:
-            print('Gathering execution information failed with exception: %s' % traceback.format_exc())
-            self.errorMsg = 'Gathering execution information failed with exception: %s' % traceback.format_exc()
+            print('Updating info failed with exception: %s' % traceback.format_exc())
+            self.errorMsg = traceback.format_exc()
 
-        finally:
-            self.lock.release()
-
-        # getQueued
-        self.errorMsg = None
-        self.rowsQueued = []
-
-        try:
-            self.lock.acquire()
-
-            if self.dataException == None:
-                for queue, files, dummy in self.queueFolder.items:
-                    if len(files):
-                        if queue.upper() in self.serverConfigs:
-                            serverString = ','.join(self.serverConfigs[queue.upper()])
-                        else:
-                            serverString = 'No servers listening on this queue !!'
-
-                        for doyleFile in files:
-                            age = datetime.datetime.now() - doyleFile.queuedTime
-                            style = 'default' if age.total_seconds() < 2 * 24 * 3600 else 'warning'
-                            row = [style,self.ageToString(age),
-                                   (queue, serverString),
-                                   '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
-                                   ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
-                                              '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
-                                   doyleFile.type,
-                                   doyleFile.target]
-                            self.rowsQueued.append(row)
-
-                # sort on tfsbuildid
-                self.rowsQueued = sorted(self.rowsQueued, key=operator.itemgetter(3))
-
-            else:
-                self.errorMsg = self.dataException
-
-        except:
-            print('Gathering queue information failed with exception: %s' % traceback.format_exc())
-            self.errorMsg = 'Gathering queue information failed with exception: %s' % traceback.format_exc()
-
-        finally:
-            self.lock.release()
-
-        # getCounts
-        self.executing = '?'
-        self.queued = '?'
-        self.servers = '?'
-
-        try:
-            self.lock.acquire()
-            if self.dataException == None:
-                self.executing = self.serverFolder.count
-                self.queued = self.queueFolder.count
-                self.servers = len(self.rowsServer)
-
-        except:
-            print('Getting counts failed with exception: %s' % traceback.format_exc())
-
-        finally:
-            self.lock.release()
 
     def getErrorMsg(self):
         ''' Get the error message if an error has occured during processing, will return None when no error has occured. '''
@@ -289,32 +239,38 @@ class DoyleInfo(threading.Thread):
 
     def getExecution(self):
         ''' Get information about the executing tests and the servers. '''
-        return self.rowsExe
+        return self.executingTests
 
     def getQueued(self):
         ''' Get information about the queued tests. '''
-        return self.rowsQueued
+        return self.queuedTests
 
     def getServers(self):
         ''' Get information about all the servers. '''
-        return self.rowsServer
+        return self.servers
 
     def getServersFailed(self):
         ''' Get information about the servers that have something to report. '''
-        return self.rowsServerFailed
+        return self.serversAlerted
 
     def getCounts(self):
         ''' Get the number of entries executing and the number of entries queued. '''
-        return {'executing': self.serverFolder.count, 'queued': self.queueFolder.count, 'servers': self.servers }
+        result={'executing': len(self.executingTests), 'executingAlert': self.executingTestsAlert,
+                'queued': len(self.queuedTests), 'queuedAlert': self.queuedTestsAlert,
+                'servers': len(self.servers), 'serversAlert': len(self.serversAlerted)!=0 }
+        print(result)
+
+        return result
 
     def getHistory(self, doyleServer):
-        ''' Get a list of what was excecuted on a given doyleServer.'''
+        ''' Get a list of what was excecuted on a given doyle server.'''
 
-        entriesSorted = self.doyleFileDb.getDoyleHistory(doyleServer)
+        # get the history for the given server
+        entries = self.doyleFileDb.getDoyleHistory(doyleServer)
 
         # prepare the list for the HTML template
         toDisplay = []
-        for x in entriesSorted:
+        for x in entries:
             toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], str(x[3])]), x[4]))
 
         return {'history': toDisplay}
