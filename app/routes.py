@@ -15,7 +15,7 @@ def index():
 
 @app.route('/overview')
 def overview():
-    return render_template('overview.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), exes=doyleInfo.getExecution(), servers=doyleInfo.getServers(), queues=doyleInfo.getQueued())
+    return render_template('overview.html', counts=doyleInfo.getCounts(), errorMsg=doyleInfo.getErrorMsg(), exes=doyleInfo.getExecution(), servers=doyleInfo.getServersFailed(), queues=doyleInfo.getQueued())
 
 
 @app.route('/executing')

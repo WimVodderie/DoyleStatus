@@ -189,7 +189,8 @@ class DoyleInfo(threading.Thread):
         # getExecuting
         self.errorMsg = None
         self.rowsExe = []
-        self.rowsServer = []
+        self.rowsServer = []            # all the servers
+        self.rowsServerFailed = []      # only the servers that have something to report
 
         try:
             self.lock.acquire()
@@ -211,6 +212,8 @@ class DoyleInfo(threading.Thread):
 
                 for item in self.serverReport:
                     row = [item[0], item[1], item[2], ', '.join(item[3])]
+                    if item[0]!='default':
+                        self.rowsServerFailed.append(row)
                     self.rowsServer.append(row)
             else:
                 self.errorMsg=self.dataException
@@ -293,8 +296,12 @@ class DoyleInfo(threading.Thread):
         return self.rowsQueued
 
     def getServers(self):
-        ''' Get information about the servers. '''
+        ''' Get information about all the servers. '''
         return self.rowsServer
+
+    def getServersFailed(self):
+        ''' Get information about the servers that have something to report. '''
+        return self.rowsServerFailed
 
     def getCounts(self):
         ''' Get the number of entries executing and the number of entries queued. '''

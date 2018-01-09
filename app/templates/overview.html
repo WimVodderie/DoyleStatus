@@ -7,7 +7,7 @@
 </h4>
 <span>Exception: {{ errorMsg }}</span>
 {% else %}
-<h4>Executing ({{ counts.executing }} items)</h4>
+<h5>Executing ({{ counts.executing }} items)</h5>
 <table class="table table-striped table-condensed">
     <tbody>
         {% for row in exes %}
@@ -27,7 +27,7 @@
 </table>
 
 {% if servers %}
-<h4>Servers ({{ counts.servers }})</h4>
+<h5>Servers</h5>
 <table class="table table-striped table-condensed">
         <tbody>
         {% for row in servers %}
@@ -43,7 +43,7 @@
 <p>nothing to report</p>
 {% endif %}
 
-<h4>Queued ({{ counts.queued }} items)</h4>
+<h5>Queued ({{ counts.queued }} items)</h5>
 <table class="table table-striped table-condensed">
     <tbody>
         {% for row in queues %}
