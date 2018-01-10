@@ -3,7 +3,7 @@
 
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <head>
-    <title>Doyle status ({{ counts.executing }} / {{ counts.queued }})</title>
+    <title>{% if counts.executingAlert or counts.queuedAlert or counts.serversAlert%}! {% endif %}Doyle status ({{ counts.executing }} / {{ counts.queued }})</title>
     <meta content="60" http-equiv="refresh">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.6/paper/bootstrap.min.css" rel="stylesheet">

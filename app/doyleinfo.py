@@ -19,6 +19,33 @@ serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
 doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '']
 
 
+class DoyleResult:
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.errorMsg = 'The information is still being gathered.'
+        self.servers = []
+        self.serversAlerted = []
+        self.executingTests = []
+        self.executingTestsAlert=False
+        self.queuedTests = []
+        self.queuedTestsAlert=False
+
+    def copyFrom(self,newResult):
+        with self.lock:
+            self.errorMsg = newResult.errorMsg
+            self.servers = newResult.servers[:]
+            self.serversAlerted = newResult.serversAlerted[:]
+            self.executingTests = newResult.executingTests[:]
+            self.executingTestsAlert = newResult.executingTestsAlert
+            self.queuedTests = newResult.queuedTests[:]
+            self.queuedTestsAlert = newResult.queuedTestsAlert
+
+
+
+
+
+
 class DoyleInfo(threading.Thread):
     ''' Main class that keeps and updates test info for queues and servers.'''
 
@@ -34,11 +61,10 @@ class DoyleInfo(threading.Thread):
             sys.exit('cannot access TestQueues and TestServers!')
 
         self.cache = DoyleFileCache()
-        self.lock = threading.Lock()
         self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, self.queuesPath)
         self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, self.serversPath)
 
-        self.errorMsg = 'The information is still being gathered.'
+        self.result=DoyleResult()
         self._clean()
 
         # create database and pass it (as a static) to DoyleFile
@@ -56,14 +82,8 @@ class DoyleInfo(threading.Thread):
     def _clean(self):
         self.serverConfigs = []
         self.serversForAllQueues = []
-        self.serverReport = []
         self.cache.resetUsedCount()
-        self.servers = []
-        self.serversAlerted = []
-        self.executingTests = []
-        self.executingTestsAlert=False
-        self.queuedTests = []
-        self.queuedTestsAlert=False
+
 
     def ageToString(self, age):
         if age.days > 0:
@@ -96,15 +116,15 @@ class DoyleInfo(threading.Thread):
         return resultDict
 
     def _update(self):
+        ''' Re-read queue and server folders and build a new result.'''
+        start = timer()
         try:
             self._clean()
+            newResult=DoyleResult()
 
-            start = timer()
             self.queueFolder.update(self.cache)
             self.serverFolder.update(self.cache)
             self.cache.removeUnusedEntries()
-            end = timer()
-            print('Gathering info took %.4fs (hit %s / new %s / gone %s)' % ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
 
             self.serverConfigs = self.getServerConfigs(self.serversPath)
 
@@ -164,18 +184,18 @@ class DoyleInfo(threading.Thread):
                 if len(serverMessages) > 0:
                     row = [style, doyleServerAge, server, ', '.join(serverMessages)]
                     if style!='default':
-                        self.serversAlerted.append(row)
-                    self.servers.append(row)
+                        newResult.serversAlerted.append(row)
+                    newResult.servers.append(row)
 
                 for doyleFile in files:
                     style = 'default'
                     age = datetime.datetime.now() - doyleFile.firstExecutionTime
                     if age.total_seconds() > doyleFile.expectedExecutionTime[2]:
                         style='danger'
-                        self.executingTestsAlert=True
+                        newResult.executingTestsAlert=True
                     elif age.total_seconds() > doyleFile.expectedExecutionTime[1]:
                         style='warning'
-                        self.executingTestsAlert=True
+                        newResult.executingTestsAlert=True
                     row = [style,
                            '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                            server,
@@ -186,7 +206,7 @@ class DoyleInfo(threading.Thread):
                             '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
                         doyleFile.type,
                         doyleFile.target]
-                    self.executingTests.append(row)
+                    newResult.executingTests.append(row)
 
 
             # check if we should switch on the blue light
@@ -213,7 +233,7 @@ class DoyleInfo(threading.Thread):
                         style = 'default'
                         if age.total_seconds() > 2 * 24 * 3600:
                             style = 'warning'
-                            self.queuedTestsAlert=True
+                            newResult.queuedTestsAlert=True
                         row = [style,self.ageToString(age),
                                 (queue, serverString),
                                 '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
@@ -221,46 +241,56 @@ class DoyleInfo(threading.Thread):
                                  '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
                                 doyleFile.type,
                                 doyleFile.target]
-                        self.queuedTests.append(row)
+                        newResult.queuedTests.append(row)
 
             # sort on tfsbuildid
-            self.queuedTests = sorted(self.queuedTests, key=operator.itemgetter(3))
+            newResult.queuedTests = sorted(newResult.queuedTests, key=operator.itemgetter(3))
 
             # if we got here without exception, there is no error
-            self.errorMsg=None
+            newResult.errorMsg=None
+
         except:
             print('Updating info failed with exception: %s' % traceback.format_exc())
-            self.errorMsg = traceback.format_exc()
+            newResult.errorMsg = traceback.format_exc()
+
+        # replace current result with new result
+        self.result.copyFrom(newResult)
+
+        end = timer()
+        print('Building info took %.4fs (hit %s / new %s / gone %s)' % ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
 
 
     def getErrorMsg(self):
         ''' Get the error message if an error has occured during processing, will return None when no error has occured. '''
-        return self.errorMsg
+        with self.result.lock:
+            return self.result.errorMsg
 
     def getExecution(self):
         ''' Get information about the executing tests and the servers. '''
-        return self.executingTests
+        with self.result.lock:
+            return self.result.executingTests
 
     def getQueued(self):
         ''' Get information about the queued tests. '''
-        return self.queuedTests
+        with self.result.lock:
+            return self.result.queuedTests
 
     def getServers(self):
         ''' Get information about all the servers. '''
-        return self.servers
+        with self.result.lock:
+            return self.result.servers
 
     def getServersFailed(self):
         ''' Get information about the servers that have something to report. '''
-        return self.serversAlerted
+        with self.result.lock:
+            return self.result.serversAlerted
 
     def getCounts(self):
         ''' Get the number of entries executing and the number of entries queued. '''
-        result={'executing': len(self.executingTests), 'executingAlert': self.executingTestsAlert,
-                'queued': len(self.queuedTests), 'queuedAlert': self.queuedTestsAlert,
-                'servers': len(self.servers), 'serversAlert': len(self.serversAlerted)!=0 }
-        print(result)
-
-        return result
+        with self.result.lock:
+            return {'executing': len(self.result.executingTests), 'executingAlert': self.result.executingTestsAlert,
+                    'queued': len(self.result.queuedTests), 'queuedAlert': self.result.queuedTestsAlert,
+                    'servers': len(self.result.servers), 'serversAlert': len(self.result.serversAlerted)!=0 }
 
     def getHistory(self, doyleServer):
         ''' Get a list of what was excecuted on a given doyle server.'''
