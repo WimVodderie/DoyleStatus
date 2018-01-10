@@ -23,15 +23,18 @@ class DoyleResult:
 
     def __init__(self):
         self.lock = threading.Lock()
-        self.errorMsg = 'The information is still being gathered.'
+        self.clear('The information is still being gathered.')
+
+    def clear(self, message):
+        self.errorMsg = message
         self.servers = []
         self.serversAlerted = []
         self.executingTests = []
-        self.executingTestsAlert=False
+        self.executingTestsAlert = False
         self.queuedTests = []
-        self.queuedTestsAlert=False
+        self.queuedTestsAlert = False
 
-    def copyFrom(self,newResult):
+    def copyFrom(self, newResult):
         with self.lock:
             self.errorMsg = newResult.errorMsg
             self.servers = newResult.servers[:]
@@ -40,10 +43,6 @@ class DoyleResult:
             self.executingTestsAlert = newResult.executingTestsAlert
             self.queuedTests = newResult.queuedTests[:]
             self.queuedTestsAlert = newResult.queuedTestsAlert
-
-
-
-
 
 
 class DoyleInfo(threading.Thread):
@@ -64,7 +63,7 @@ class DoyleInfo(threading.Thread):
         self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, self.queuesPath)
         self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, self.serversPath)
 
-        self.result=DoyleResult()
+        self.result = DoyleResult()
         self._clean()
 
         # create database and pass it (as a static) to DoyleFile
@@ -83,7 +82,6 @@ class DoyleInfo(threading.Thread):
         self.serverConfigs = []
         self.serversForAllQueues = []
         self.cache.resetUsedCount()
-
 
     def ageToString(self, age):
         if age.days > 0:
@@ -120,7 +118,7 @@ class DoyleInfo(threading.Thread):
         start = timer()
         try:
             self._clean()
-            newResult=DoyleResult()
+            newResult = DoyleResult()
 
             self.queueFolder.update(self.cache)
             self.serverFolder.update(self.cache)
@@ -143,7 +141,7 @@ class DoyleInfo(threading.Thread):
                 style = 'default'
 
                 # there are files executing on this server
-                if len(files)>0:
+                if len(files) > 0:
                     serverMessages.append('Executing')
 
                 # server has an upgrade pending
@@ -183,7 +181,7 @@ class DoyleInfo(threading.Thread):
 
                 if len(serverMessages) > 0:
                     row = [style, doyleServerAge, server, ', '.join(serverMessages)]
-                    if style!='default':
+                    if style != 'default':
                         newResult.serversAlerted.append(row)
                     newResult.servers.append(row)
 
@@ -191,23 +189,23 @@ class DoyleInfo(threading.Thread):
                     style = 'default'
                     age = datetime.datetime.now() - doyleFile.firstExecutionTime
                     if age.total_seconds() > doyleFile.expectedExecutionTime[2]:
-                        style='danger'
-                        newResult.executingTestsAlert=True
+                        style = 'danger'
+                        newResult.executingTestsAlert = True
                     elif age.total_seconds() > doyleFile.expectedExecutionTime[1]:
-                        style='warning'
-                        newResult.executingTestsAlert=True
+                        style = 'warning'
+                        newResult.executingTestsAlert = True
                     row = [style,
-                           '%s (%s)' % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
+                           '%s (%s)' % (self.ageToString(age), self.ageToString(
+                               datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                            server,
                            '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
                            ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]),
                             doyleFile.file,
                             'file:///u:/pgxbe/releases/' + '/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
-                            '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
-                        doyleFile.type,
-                        doyleFile.target]
+                                                                     '{0:04}'.format(doyleFile.xbebuildid)]) + '/xbe_release.log'),
+                           doyleFile.type,
+                           doyleFile.target]
                     newResult.executingTests.append(row)
-
 
             # check if we should switch on the blue light
 #            blueLightOn=0
@@ -219,7 +217,6 @@ class DoyleInfo(threading.Thread):
 #            xmlrpc.client.ServerProxy('http://10.0.60.57:8000').blue(blueLightOn)
 
 #            raise Exception("testing failure to update")
-
 
             # getQueued
             for queue, files, dummy in self.queueFolder.items:
@@ -233,32 +230,32 @@ class DoyleInfo(threading.Thread):
                         style = 'default'
                         if age.total_seconds() > 2 * 24 * 3600:
                             style = 'warning'
-                            newResult.queuedTestsAlert=True
-                        row = [style,self.ageToString(age),
-                                (queue, serverString),
-                                '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
-                                ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
-                                 '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
-                                doyleFile.type,
-                                doyleFile.target]
+                            newResult.queuedTestsAlert = True
+                        row = [style, self.ageToString(age),
+                               (queue, serverString),
+                               '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
+                               ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject,
+                                          '{0:04}'.format(doyleFile.xbebuildid)]), doyleFile.file),
+                               doyleFile.type,
+                               doyleFile.target]
                         newResult.queuedTests.append(row)
 
             # sort on tfsbuildid
             newResult.queuedTests = sorted(newResult.queuedTests, key=operator.itemgetter(3))
 
             # if we got here without exception, there is no error
-            newResult.errorMsg=None
+            newResult.errorMsg = None
 
         except:
             print('Updating info failed with exception: %s' % traceback.format_exc())
-            newResult.errorMsg = traceback.format_exc()
+            newResult.clear(traceback.format_exc())
 
         # replace current result with new result
         self.result.copyFrom(newResult)
 
         end = timer()
-        print('Building info took %.4fs (hit %s / new %s / gone %s)' % ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
-
+        print('Building info took %.4fs (hit %s / new %s / gone %s)' %
+              ((end - start), self.cache.hitCount, self.cache.addCount, self.cache.removeCount))
 
     def getErrorMsg(self):
         ''' Get the error message if an error has occured during processing, will return None when no error has occured. '''
@@ -290,7 +287,7 @@ class DoyleInfo(threading.Thread):
         with self.result.lock:
             return {'executing': len(self.result.executingTests), 'executingAlert': self.result.executingTestsAlert,
                     'queued': len(self.result.queuedTests), 'queuedAlert': self.result.queuedTestsAlert,
-                    'servers': len(self.result.servers), 'serversAlert': len(self.result.serversAlerted)!=0 }
+                    'servers': len(self.result.servers), 'serversAlert': len(self.result.serversAlerted) != 0}
 
     def getHistory(self, doyleServer):
         ''' Get a list of what was excecuted on a given doyle server.'''
