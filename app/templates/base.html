@@ -16,7 +16,7 @@
 {% else %}
 <li>
 {% endif %}
-    <a href="{{ url_for(navpath) }}" {% if alert %} style="color:red;" {% endif %} >{{ navdisp }} {{ extradisp }}</a>
+    <a href="{{ url_for(navpath) }}">{{ navdisp }} {{ extradisp }}{% if alert %} <span class="glyphicon glyphicon-exclamation-sign"></span>{% endif %}</a>
 </li>
 {%- endmacro %}
 
@@ -38,9 +38,15 @@
         </div>
     </nav>
     <div style="margin-left:20px;">
+    {% if errorMsg %}
+    <h4>
+        <span>Gathering data failed :-(</span>
+    </h4>
+    <span>Exception: {{ errorMsg }}</span>
+    {% else %}
     {% block content %}
     {% endblock %}
-    </div>
+    {% endif %}
+</div>
 </body>
-
 </html>

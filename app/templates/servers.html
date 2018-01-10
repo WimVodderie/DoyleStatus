@@ -1,12 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if errorMsg %}
-<h4>
-    <span>Gathering data failed :-(</span>
-</h4>
-<span>Exception: {{ errorMsg }}</span>
-{% else %}
 {% if servers %}
 <table class="table table-striped table-condensed">
         <tbody>
@@ -21,6 +15,5 @@
 </table>
 {% else %}
 <p>nothing to report</p>
-{% endif %}
 {% endif %}
 {% endblock %}
