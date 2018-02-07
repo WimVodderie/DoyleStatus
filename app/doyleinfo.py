@@ -287,7 +287,8 @@ class DoyleInfo(threading.Thread):
         with self.result.lock:
             return {'executing': len(self.result.executingTests), 'executingAlert': self.result.executingTestsAlert,
                     'queued': len(self.result.queuedTests), 'queuedAlert': self.result.queuedTestsAlert,
-                    'servers': len(self.result.servers), 'serversAlert': len(self.result.serversAlerted) != 0}
+                    'servers': len(self.result.servers), 'serversAlert': len(self.result.serversAlerted) != 0,
+                    'serverRemarks': len(self.result.serversAlerted)}
 
     def getHistory(self, doyleServer):
         ''' Get a list of what was excecuted on a given doyle server.'''
