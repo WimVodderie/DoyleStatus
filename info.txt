@@ -17,3 +17,12 @@ flask run
 
 #install flask-wtf
 py -m pip install flask-wtf
+
+
+#on raspi with no ssl install flask: download and install components by hand
+pip install /home/dfe01/MarkupSafe-1.0.tar.gz
+pip install /home/dfe01/Jinja2-2.10-py2.py3-none-any.whl
+pip install /home/dfe01/click-6.7-py2.py3-none-any.whl
+pip install /home/dfe01/Werkzeug-0.14.1-py2.py3-none-any.whl
+pip install /home/dfe01/itsdangerous-0.24.tar.gz
+pip install /home/dfe01/Flask-0.12.2-py2.py3-none-any.whl
