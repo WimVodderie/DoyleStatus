@@ -111,7 +111,7 @@ class DoyleFileDb(threading.Thread):
     def _updateFile(self, doyleFile):
         ''' Update the parts of the doyleFile that change.'''
         # only update the database when something has changed
-        if doyleFile.firstexecutionTime!=None and doyleFile.lastExecutionTime!=None and doyleFile.server!=None:
+        if doyleFile.firstExecutionTime!=None and doyleFile.lastExecutionTime!=None and doyleFile.server!=None:
             c = self.db.cursor()
             c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (
                 DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server, ))
