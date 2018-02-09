@@ -57,7 +57,7 @@ class DoyleFileDb(threading.Thread):
             if req == 'getExpectedExecutionTime':
                 res.put(self._getExpectedExecutionTime(arg))
             if req == 'getDoyleHistory':
-                res.put(self._getDoyleHistory(arg))
+                res.put(self._getDoyleHistory(*arg))
             if req == '--close--':
                 break
 
@@ -110,12 +110,14 @@ class DoyleFileDb(threading.Thread):
 
     def _updateFile(self, doyleFile):
         ''' Update the parts of the doyleFile that change.'''
-        c = self.db.cursor()
-        c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (
-            DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server, ))
-        self.db.commit()
-        print('%s: saved to db (exec time %s -> %s @ %s)' %
-              (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
+        # only update the database when something has changed
+        if doyleFile.firstexecutionTime!=None and doyleFile.lastExecutionTime!=None and doyleFile.server!=None:
+            c = self.db.cursor()
+            c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (
+                DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server, ))
+            self.db.commit()
+            print('%s: saved to db (exec time %s -> %s @ %s)' %
+                (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
 
     def getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
         res = Queue()
@@ -200,12 +202,12 @@ class DoyleFileDb(threading.Thread):
 
         return (averageTime, warnTime, failTime)
 
-    def getDoyleHistory(self, doyleServer):
+    def getDoyleHistory(self, doyleServer, count):
         res = Queue()
-        self.reqs.put(('getDoyleHistory', doyleServer, res))
+        self.reqs.put(('getDoyleHistory', (doyleServer, count), res))
         return res.get()
 
-    def _getDoyleHistory(self, doyleServer):
+    def _getDoyleHistory(self, doyleServer, count):
         start = timer()
 
         c = self.db.cursor()
@@ -218,10 +220,13 @@ class DoyleFileDb(threading.Thread):
         entriesFiltered = [x for x in entries if (x[6] - x[5]).total_seconds() > 10.0]
 
         # sort on firstexecutiontime (item 5 in the tuple)
-        entriesSorted = reversed(sorted(entriesFiltered, key=operator.itemgetter(5)))
+        entriesSorted = sorted(entriesFiltered, key=operator.itemgetter(5), reverse=True)
+
+        # take the number of requested entries
+        entriesSorted = entriesSorted[0:count]
 
         end = timer()
-        print('Got %s on %s from db, took %.4fs' % (len(entriesFiltered), doyleServer, (end - start)))
+        print('Got %s of %s on %s from db, took %.4fs' % (len(entriesSorted), len(entriesFiltered), doyleServer, (end - start)))
 
         return entriesSorted
 

@@ -294,7 +294,7 @@ class DoyleInfo(threading.Thread):
         ''' Get a list of what was excecuted on a given doyle server.'''
 
         # get the history for the given server
-        entries = self.doyleFileDb.getDoyleHistory(doyleServer)
+        entries = self.doyleFileDb.getDoyleHistory(doyleServer, 100)
 
         # prepare the list for the HTML template
         toDisplay = []
