@@ -1,3 +1,4 @@
+import datetime
 import operator
 import os
 from queue import Queue
@@ -58,6 +59,8 @@ class DoyleFileDb(threading.Thread):
                 res.put(self._getExpectedExecutionTime(arg))
             if req == 'getDoyleHistory':
                 res.put(self._getDoyleHistory(*arg))
+            if req == 'cleanupDatabase':
+                res.put(self._cleanupDatabase(arg))
             if req == '--close--':
                 break
 
@@ -111,13 +114,13 @@ class DoyleFileDb(threading.Thread):
     def _updateFile(self, doyleFile):
         ''' Update the parts of the doyleFile that change.'''
         # only update the database when something has changed
-        if doyleFile.firstExecutionTime!=None and doyleFile.lastExecutionTime!=None and doyleFile.server!=None:
+        if doyleFile.firstExecutionTime != None and doyleFile.lastExecutionTime != None and doyleFile.server != None:
             c = self.db.cursor()
             c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (
                 DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server, ))
             self.db.commit()
             print('%s: saved to db (exec time %s -> %s @ %s)' %
-                (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
+                  (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
 
     def getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
         res = Queue()
@@ -210,28 +213,41 @@ class DoyleFileDb(threading.Thread):
     def _getDoyleHistory(self, doyleServer, count):
         start = timer()
 
+        # let SQL order by first execution time and limit the output to the number of entries requested
         c = self.db.cursor()
-        c.execute('SELECT xbetree,xbegroup,xbeproject,xbebuildid,target,firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND server LIKE "%s"' % (
-            DoyleFileDb.TABLE_NAME, doyleServer))
+        c.execute('SELECT xbetree,xbegroup,xbeproject,xbebuildid,target,firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND server LIKE "%s" ORDER BY firstexecutiontime DESC LIMIT %s' % (
+            DoyleFileDb.TABLE_NAME, doyleServer, count))
         entries = c.fetchall()
         c.close()
 
-        # get all entries that lasted at least 10 seconds
-        entriesFiltered = [x for x in entries if (x[6] - x[5]).total_seconds() > 10.0]
-
-        # sort on firstexecutiontime (item 5 in the tuple)
-        entriesSorted = sorted(entriesFiltered, key=operator.itemgetter(5), reverse=True)
-
-        # take the number of requested entries
-        entriesSorted = entriesSorted[0:count]
-
         end = timer()
-        print('Got %s of %s on %s from db, took %.4fs' % (len(entriesSorted), len(entriesFiltered), doyleServer, (end - start)))
+        print('Got %s on %s from db, took %.4fs' % (len(entries), doyleServer, (end - start)))
+        return entries
 
-        return entriesSorted
-
-    def removeUselessItems(self):
+    def _removeUselessItems(self):
         # remove all items that have no first and last execution time
         c = self.db.cursor()
         c.execute('DELETE FROM %s WHERE firstexecutiontime IS NULL AND lastexecutiontime IS NULL' % DoyleFileDb.TABLE_NAME)
         self.db.commit()
+
+    def _removeOldTests(self):
+        ''' Go over the database and limit for each test the number of records to the 100 most recent tests.
+        '''
+        # first get a list of all unique tests
+        c = self.db.cursor()
+        c.execute('SELECT DISTINCT xbetree,xbegroup,xbeproject,target FROM %s' % (DoyleFileDb.TABLE_NAME))
+        allTests = c.fetchall()
+        c.close()
+
+        # now for each test
+#        for test in allTests:
+
+
+    def cleanupDatabase(self):
+        res = Queue()
+        self.reqs.put(('cleanupDatabase', res))
+        return res.get()
+
+    def _cleanupDatabase(self):
+        self._removeUselessItems()
+
