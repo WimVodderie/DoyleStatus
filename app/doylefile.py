@@ -7,9 +7,6 @@ from app import doylefiledb
 class DoyleFile:
     ''' This class tracks all the info about a doyle test. Part of it is kept/loaded from the database, part is updated.'''
 
-    # 'static' database connection
-    doyleFileDb = None
-
     def __init__(self, path, file):
         self.path = path
         self.file = file

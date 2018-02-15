@@ -37,6 +37,7 @@ class DoyleFileDb(threading.Thread):
         c.execute('SELECT name FROM sqlite_master WHERE type="table" AND name="%s"' % DoyleFileDb.TABLE_NAME)
         result = c.fetchall()
         c.close()
+
         # create table if it does not exist yet
         if len(result) == 0 or DoyleFileDb.TABLE_NAME not in result[0]:
             cmd = 'CREATE TABLE %s (file char(100) PRIMARY KEY, target char(100) NOT NULL, type char(10), server char(64) NOT NULL, queue char(64), xbetree char(32) NOT NULL, xbegroup char(64) NOT NULL, xbeproject char(100) NOT NULL, xbebuildid INTEGER, tfsbuildid INTEGER, queuedtime TIMESTAMP, firstexecutiontime TIMESTAMP, lastexecutiontime TIMESTAMP)' % DoyleFileDb.TABLE_NAME
@@ -60,11 +61,18 @@ class DoyleFileDb(threading.Thread):
             if req == 'getDoyleHistory':
                 res.put(self._getDoyleHistory(*arg))
             if req == 'cleanupDatabase':
-                self._cleanupDatabase()
+                res.put(self._cleanupDatabase())
             if req == '--close--':
                 break
 
         self.db.close()
+
+    def quit(self):
+        # queue the command to stop the thread
+        print('Asking db thread to stop')
+        self.reqs.put(('--close--', None, None))
+        print('Waiting for db thread to stop')
+        self.join()
 
     def loadFile(self, doyleFile):
         res = Queue()
@@ -227,14 +235,13 @@ class DoyleFileDb(threading.Thread):
         return entries
 
     def _removeUselessItems(self):
-        # remove all items that have no first and last execution time
+        ''' Remove all items that have no first or last execution time.'''
         c = self.db.cursor()
         c.execute('DELETE FROM %s WHERE firstexecutiontime IS NULL OR lastexecutiontime IS NULL' % DoyleFileDb.TABLE_NAME)
         self.db.commit()
 
     def _removeOldTests(self):
-        ''' Go over the database and limit for each test the number of records to the 100 most recent tests.
-        '''
+        ''' Go over the database and limit for each test the number of records to the 100 most recent tests.'''
         start = timer()
 
         # first get a list of all unique tests
@@ -244,43 +251,54 @@ class DoyleFileDb(threading.Thread):
         c.close()
 
         # keep some counts
-        numberOfTests=len(allTests)
-        numberOfTestsCleaned=0
-        numberOfRowsDeleted=0
+        numberOfTests = len(allTests)
+        numberOfTestsCleaned = 0
+        numberOfRowsDeleted = 0
 
         # now for each test in the list
         for test in allTests:
 
             # get the execution time of the 100th instance of this test
             c = self.db.cursor()
-            c.execute('SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100' % (DoyleFileDb.TABLE_NAME,*test))
-            result=c.fetchall()
+            c.execute('SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100' % (
+                DoyleFileDb.TABLE_NAME, *test))
+            result = c.fetchall()
             c.close()
 
             # we will get no result when there are less than 100 instances
-            if len(result)==1:
-                numberOfTestsCleaned=numberOfTestsCleaned+1
-                keepFirstExecutionTime=result[0][0]
-                print('%s -> cutoff older than %s' % ('.'.join(test),keepFirstExecutionTime))
+            if len(result) == 1:
+                numberOfTestsCleaned = numberOfTestsCleaned+1
+                keepFirstExecutionTime = result[0][0]
+                print('%s -> purge older than %s' % ('.'.join(test), keepFirstExecutionTime))
 
                 # delete the records that executed before the selected time and get the count of deleted records
                 c = self.db.cursor()
-                c.execute('DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"' % (DoyleFileDb.TABLE_NAME,*test,keepFirstExecutionTime))
+                c.execute('DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"' % (
+                    DoyleFileDb.TABLE_NAME, *test, keepFirstExecutionTime))
                 c.execute('SELECT changes()')
-                result=c.fetchall()
-                if len(result)>0:
-                    numberOfRowsDeleted=numberOfRowsDeleted+result[0][0]
+                result = c.fetchall()
+                if len(result) > 0:
+                    numberOfRowsDeleted = numberOfRowsDeleted+result[0][0]
                 c.close
 
         self.db.commit()
 
-        end = timer()
-        print('Removed %s rows from %s of %s distinct tests, took %.4fs' % (numberOfRowsDeleted,numberOfTestsCleaned,numberOfTests, (end - start)))
+        # compact the database
+        c = self.db.cursor()
+        c.execute('VACUUM')
+        c.close
+        self.db.commit()
 
+        end = timer()
+        print('Removed %s rows from %s of %s distinct tests, took %.4fs' %
+              (numberOfRowsDeleted, numberOfTestsCleaned, numberOfTests, (end - start)))
+        return (numberOfRowsDeleted, numberOfTestsCleaned, numberOfTests)
 
     def cleanupDatabase(self):
-        self.reqs.put(('cleanupDatabase', None, None))
+        res = Queue()
+        self.reqs.put(('cleanupDatabase', None, res))
+        return res.get()
 
     def _cleanupDatabase(self):
-#        self._removeUselessItems()
+        self._removeUselessItems()
         self._removeOldTests()

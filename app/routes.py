@@ -4,9 +4,17 @@ from app.doyleinfo import DoyleInfo
 
 from app.forms import HistoryForm
 
+from flask import request
+
+def shutdown_server():
+    print('Shutting down the server')
+    shutdown_func = request.environ.get('werkzeug.server.shutdown')
+    if shutdown_func is None:
+        print('Failed to get shutdown function, cannot stop')
+    else:
+        shutdown_func()
 
 doyleInfo = DoyleInfo()
-
 
 @app.route('/')
 @app.route('/index')
@@ -42,6 +50,17 @@ def selectServer():
     else:
         return render_template('select-server.html', counts=doyleInfo.getCounts(), form=form)
 
+
+@app.route('/quitquitquit')
+def quit():
+    doyleInfo.quit()
+    shutdown_server()
+    return 'Server shutting down'
+
+@app.route('/cleancleanclean')
+def clean():
+    doyleInfo.startCleanDatabase()
+    return 'Cleaning database started'
 
 @app.route('/history/<serverName>')
 def history(serverName):

@@ -70,13 +70,34 @@ class DoyleInfo(threading.Thread):
         self.doyleFileDb = DoyleFileDb()
         DoyleFile.doyleFileDb = self.doyleFileDb
 
+        self.keepRunning = True
+        self.cleanDatabase = False
+
         threading.Thread.__init__(self)
         self.start()
 
+    def quit(self):
+        # signal thread to stop
+        print('Asking info thread to stop')
+        self.keepRunning = False
+        # wait for thread to stop
+        print('Waiting for info thread to stop')
+        self.join()
+        # stop the database thread
+        self.doyleFileDb.quit()
+
     def run(self):
-        while True:
-            self._update()
-            time.sleep(50)
+        count = 50
+        while self.keepRunning:
+            if count >= 50:
+                self._update()
+                count = 0
+            if self.cleanDatabase==True:
+                self.result.clear('Busy cleaning the database, try again a bit later')
+                self.doyleFileDb.cleanupDatabase()
+                self.cleanDatabase=False
+            count = count+1
+            time.sleep(1)
 
     def _clean(self):
         self.serverConfigs = []
@@ -302,3 +323,6 @@ class DoyleInfo(threading.Thread):
             toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], str(x[3])]), x[4]))
 
         return {'history': toDisplay}
+
+    def startCleanDatabase(self):
+        self.cleanDatabase=True
