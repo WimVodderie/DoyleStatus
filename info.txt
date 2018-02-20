@@ -1,28 +1,18 @@
-#create folder for project
-cd <folder>
-#create virtual environment
+# get source from github
+git clone www.github.com\WimVodderie\DoyleStatus
+# create virtual environment
 py -m venv venv
-#activate the virtual environment (in cmd.exe)
-.\venv\Scripts\Activate.bat
-#install flask
-pip install flask
-#create app folder
-mkdir app
-#create python files
-app\__init__.py
-app\routes.py
-<app>.py
-set FLASK_APP=<app>.py
-flask run
-
-#install flask-wtf
+# activate the virtual environment (in cmd.exe)
+cmd.exe: .\venv\Scripts\Activate.bat
+powershell: .\venv\Scripts\Activate.ps1
+linux: source .\venv\scripts\activate
+# install flask
+py -m pip install flask
 py -m pip install flask-wtf
 
-
-#on raspi with no ssl install flask: download and install components by hand
-pip install /home/dfe01/MarkupSafe-1.0.tar.gz
-pip install /home/dfe01/Jinja2-2.10-py2.py3-none-any.whl
-pip install /home/dfe01/click-6.7-py2.py3-none-any.whl
-pip install /home/dfe01/Werkzeug-0.14.1-py2.py3-none-any.whl
-pip install /home/dfe01/itsdangerous-0.24.tar.gz
-pip install /home/dfe01/Flask-0.12.2-py2.py3-none-any.whl
+On the Pi:
+- install python 3.6.4 from source
+- install (pip) flask and flask-wtf
+- useful:
+    start DoyleStatus.py in tmux and press "Ctrl+b" d to detach session, keeps running in the background
+    "tmux attach" after login to get back
