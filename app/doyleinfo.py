@@ -87,9 +87,9 @@ class DoyleInfo(threading.Thread):
         self.doyleFileDb.quit()
 
     def run(self):
-        count = 50
+        count = 20
         while self.keepRunning:
-            if count >= 50:
+            if count >= 20:
                 self._update()
                 count = 0
             if self.cleanDatabase==True:
