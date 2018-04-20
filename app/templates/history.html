@@ -2,7 +2,7 @@
 
 {% block content %}
 <h4>
-    <span>History for {{ servername }} ({{ status.history|length }} entries, most recent on top)</span>
+    <span>History for {{ servername }} ({{ status.history|length }} entries, most recent on top, {{ '%0.1f' % status.busyPercentage}}% busy)</span>
 </h4>
 <table class="table table-striped table-condensed">
     <tbody>

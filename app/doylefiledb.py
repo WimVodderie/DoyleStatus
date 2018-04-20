@@ -218,6 +218,8 @@ class DoyleFileDb(threading.Thread):
     def getDoyleHistory(self, doyleServer, count):
         res = Queue()
         self.reqs.put(('getDoyleHistory', (doyleServer, count), res))
+
+        # we got all entries from the database, now also compute what percentage of the time the server was busy
         return res.get()
 
     def _getDoyleHistory(self, doyleServer, count):

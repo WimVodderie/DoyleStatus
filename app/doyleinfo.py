@@ -317,12 +317,22 @@ class DoyleInfo(threading.Thread):
         # get the history for the given server
         entries = self.doyleFileDb.getDoyleHistory(doyleServer, 100)
 
+        # calculate how busy the server was during this period
+        busyPercentage=0
+        if len(entries)>1:
+            busySeconds=0
+            totalSeconds=0
+            for e in entries:
+                busySeconds=busySeconds+(e[6]-e[5]).total_seconds()
+            totalSeconds=(entries[0][6]-entries[-1][5]).total_seconds()
+            busyPercentage=(busySeconds*100.0)/totalSeconds
+
         # prepare the list for the HTML template
         toDisplay = []
         for x in entries:
             toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], str(x[3])]), x[4]))
 
-        return {'history': toDisplay}
+        return {'history': toDisplay, 'busyPercentage': busyPercentage}
 
     def startCleanDatabase(self):
         self.cleanDatabase=True
