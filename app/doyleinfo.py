@@ -330,7 +330,7 @@ class DoyleInfo(threading.Thread):
         # prepare the list for the HTML template
         toDisplay = []
         for x in entries:
-            toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], str(x[3])]), x[4]))
+            toDisplay.append((x[5], self.ageToString(x[6] - x[5]), x[0], '\\'.join([x[1], x[2], '{0:04}'.format(x[3])]), x[4]))
 
         return {'history': toDisplay, 'busyPercentage': busyPercentage}
 
