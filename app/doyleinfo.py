@@ -105,7 +105,10 @@ class DoyleInfo(threading.Thread):
         self.cache.resetUsedCount()
 
     def ageToString(self, age):
-        if age.days > 0:
+        # clocks may not be synchronized so age might be slightly negative - display that as 1s
+        if age.total_seconds() < 0:
+            ageString = '1s'
+        elif age.days > 0:
             ageString = '%sd' % age.days
         elif age.seconds > 3600:
             ageString = '{0:.1f}h'.format(age.seconds / 3600)
