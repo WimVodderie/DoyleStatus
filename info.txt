@@ -5,7 +5,7 @@ py -m venv venv
 # activate the virtual environment (in cmd.exe)
 cmd.exe: .\venv\Scripts\Activate.bat
 powershell: .\venv\Scripts\Activate.ps1
-linux: source .\venv\scripts\activate
+linux: source ./venv/bin/activate
 # install flask
 py -m pip install flask
 py -m pip install flask-wtf
