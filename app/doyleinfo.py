@@ -13,36 +13,10 @@ from app.doylefilecache import DoyleFileCache
 from app.doylefolder import DoyleFolder, DoyleFolderType
 from app.doylefiledb import DoyleFileDb
 from app.doylefile import DoyleFile
-
+from app.doyleresult import DoyleResult
 serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
 
-doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '']
-
-
-class DoyleResult:
-
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.clear('The information is still being gathered.')
-
-    def clear(self, message):
-        self.errorMsg = message
-        self.servers = []
-        self.serversAlerted = []
-        self.executingTests = []
-        self.executingTestsAlert = False
-        self.queuedTests = []
-        self.queuedTestsAlert = False
-
-    def copyFrom(self, newResult):
-        with self.lock:
-            self.errorMsg = newResult.errorMsg
-            self.servers = newResult.servers[:]
-            self.serversAlerted = newResult.serversAlerted[:]
-            self.executingTests = newResult.executingTests[:]
-            self.executingTestsAlert = newResult.executingTestsAlert
-            self.queuedTests = newResult.queuedTests[:]
-            self.queuedTestsAlert = newResult.queuedTestsAlert
+doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', './tests' ]
 
 
 class DoyleInfo(threading.Thread):
@@ -53,15 +27,13 @@ class DoyleInfo(threading.Thread):
         for doyleBasePath in doyleBasePaths:
             if os.path.isdir(doyleBasePath):
                 print('Getting doyle info from %s' % doyleBasePath)
-                self.queuesPath = os.path.join(doyleBasePath, 'TestQueues')
-                self.serversPath = os.path.join(doyleBasePath, 'TestServers')
                 break
         if not os.path.isdir(doyleBasePath):
             sys.exit('cannot access TestQueues and TestServers!')
 
         self.cache = DoyleFileCache()
-        self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, self.queuesPath)
-        self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, self.serversPath)
+        self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, os.path.join(doyleBasePath, 'TestQueues'))
+        self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, os.path.join(doyleBasePath, 'TestServers'))
 
         self.result = DoyleResult()
         self._clean()
@@ -148,7 +120,7 @@ class DoyleInfo(threading.Thread):
             self.serverFolder.update(self.cache)
             self.cache.removeUnusedEntries()
 
-            self.serverConfigs = self.getServerConfigs(self.serversPath)
+            self.serverConfigs = self.getServerConfigs(self.serverFolder.baseFolder)
 
             # build a list of servers that should be handling the queues
             for queue, files, dummy in self.queueFolder.items:
@@ -181,7 +153,7 @@ class DoyleInfo(threading.Thread):
                 # check if doyle server is active
                 doyleServerAge = '---'
                 if server not in serverBlackList:
-                    aliveFile = os.path.join(self.serversPath, server, 'alive.dat')
+                    aliveFile = os.path.join(self.serverFolder.baseFolder, server, 'alive.dat')
                     if os.path.isfile(aliveFile):
                         age = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(aliveFile))
                         if age > datetime.timedelta(minutes=5):

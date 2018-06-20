@@ -1,4 +1,3 @@
-from app.doylefile import DoyleFile
 
 class DoyleFileCache:
     def __init__(self):
@@ -6,18 +5,18 @@ class DoyleFileCache:
         self.cache = {}
         self.resetUsedCount()
 
-    def getDoyleFile(self, path, file):
-        if file not in self.cache:
-            doyleFile = DoyleFile(path, file)
-            doyleFile.load()
-            self.cache[file] = [0, doyleFile]
-            self.addCount = self.addCount + 1
-        else:
+    def getDoyleFile(self, file):
+        if file in self.cache:
             self.hitCount = self.hitCount + 1
+            # increase used count for this item in the cache
+            self.cache[file][0] = self.cache[file][0] + 1
+            return self.cache[file][1]
+        else:
+            return None
 
-        # increase used count for this item in the cache
-        self.cache[file][0] = self.cache[file][0] + 1
-        return self.cache[file][1]
+    def addDoyleFile(self, file, doyleFile):
+        self.cache[file] = [1, doyleFile]
+        self.addCount = self.addCount + 1
 
     def resetUsedCount(self):
         self.addCount = 0

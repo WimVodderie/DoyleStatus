@@ -1,4 +1,5 @@
 import os
+import sys
 from enum import Enum
 
 class DoyleFolderType(Enum):
@@ -32,7 +33,11 @@ class DoyleFolder:
                     for file in files:
                         if os.path.splitext(file)[1].lower() == '.sh':
                             try:
-                                doyleFile = cache.getDoyleFile(subDir, file)
+                                doyleFile = cache.getDoyleFile(file)
+                                if doyleFile == None:
+                                    doyleFile = DoyleFile(subDir, file)
+                                    doyleFile.load()
+                                    cache.addDoyleFile(doyleFile)
                                 if self.folderType == DoyleFolderType.serverFolder:
                                     doyleFile.update(subDir)
                                 doyleFileList.append(doyleFile)
