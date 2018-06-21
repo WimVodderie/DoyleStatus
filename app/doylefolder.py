@@ -2,6 +2,9 @@ import os
 import sys
 from enum import Enum
 
+from app import doylefile
+
+
 class DoyleFolderType(Enum):
     serverFolder = 1
     queueFolder = 2
@@ -35,9 +38,9 @@ class DoyleFolder:
                             try:
                                 doyleFile = cache.getDoyleFile(file)
                                 if doyleFile == None:
-                                    doyleFile = DoyleFile(subDir, file)
+                                    doyleFile = doylefile.DoyleFile(subDir, file)
                                     doyleFile.load()
-                                    cache.addDoyleFile(doyleFile)
+                                    cache.addDoyleFile(file, doyleFile)
                                 if self.folderType == DoyleFolderType.serverFolder:
                                     doyleFile.update(subDir)
                                 doyleFileList.append(doyleFile)
