@@ -26,11 +26,13 @@ class DoyleFileCache:
             self.cache[file][0] = 0
 
     def removeUnusedEntries(self):
+        # build a list of all entries that have not been referenced
         toremove = []
         for file in self.cache:
             if self.cache[file][0] == 0:
-                self.cache[file][1].save()
-                toremove.append(file)
-                self.removeCount = self.removeCount + 1
-        for file in toremove:
+                toremove.append((file,self.cache[file]))
+        self.removeCount = self.removeCount + len(toremove)
+        # remove them from the cache
+        for (file,doyleFile) in toremove:
             del(self.cache[file])
+        return toremove

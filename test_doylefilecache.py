@@ -2,8 +2,11 @@ import unittest
 
 from app import doylefilecache
 
-#class DummyDoyleFile():
+class DummyDoyleFile():
 
+    def __init__(self,name):
+        self.name=name
+        self.saved=False
 
 class TestDoyleFileCache(unittest.TestCase):
 
@@ -15,6 +18,34 @@ class TestDoyleFileCache(unittest.TestCase):
         self.assertEqual(len(c.cache),0)
         self.assertEqual(c.addCount,0)
         self.assertEqual(c.removeCount,0)
+        self.assertEqual(c.hitCount,0)
+
+    def test_basic(self):
+        c=doylefilecache.DoyleFileCache()
+        # should not find a file before it was added
+        self.assertEqual(c.getDoyleFile('file1'),None)
+
+        # add a file
+        c.addDoyleFile('file1',DummyDoyleFile('file1'))
+        self.assertEqual(len(c.cache),1)
+        self.assertEqual(c.addCount,1)
+        self.assertEqual(c.removeCount,0)
+
+        self.assertEqual(c.hitCount,0)
+
+        x=c.getDoyleFile('file1')
+        self.assertNotEqual(x,None)
+        self.assertEqual(x.name,'file1')
+        self.assertEqual(len(c.cache),1)
+        self.assertEqual(c.addCount,1)
+        self.assertEqual(c.removeCount,0)
+        self.assertEqual(c.hitCount,1)
+
+        c.resetUsedCount()
+        c.removeUnusedEntries()
+        self.assertEqual(len(c.cache),0)
+        self.assertEqual(c.addCount,0)
+        self.assertEqual(c.removeCount,1)
         self.assertEqual(c.hitCount,0)
 
 
