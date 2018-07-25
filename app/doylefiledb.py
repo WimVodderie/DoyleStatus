@@ -151,8 +151,8 @@ class DoyleFileDb(threading.Thread):
         entries = c.fetchall()
         c.close()
 
-        # transform to seconds
-        times = [(x[1] - x[0]).total_seconds() for x in entries]
+        # transform to seconds and only keep entries where last time is after first time
+        times = [(x[1] - x[0]).total_seconds() for x in entries if x[1]>x[0]]
         # filter the tests that lasted less than 10 seconds, this happens when a test detects that it should not execute after all
         times = [x for x in times if x > 10.0]
 
