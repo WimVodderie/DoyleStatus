@@ -16,7 +16,7 @@ from app.doylefile import DoyleFile
 from app.doyleresult import DoyleResult
 serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
 
-doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', './tests' ]
+doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '../TestData' ]
 
 
 class DoyleInfo(threading.Thread):
@@ -116,9 +116,14 @@ class DoyleInfo(threading.Thread):
             self._clean()
             newResult = DoyleResult()
 
+            # update information from the queues and the servers
             self.queueFolder.update(self.cache)
             self.serverFolder.update(self.cache)
-            self.cache.removeUnusedEntries()
+
+            # save all the doyleFiles that have not been referenced anymore
+            unusedEntries=self.cache.removeUnusedEntries()
+            for (file,doyleFile) in unusedEntries:
+                doyleFile.save()
 
             self.serverConfigs = self.getServerConfigs(self.serverFolder.baseFolder)
 
