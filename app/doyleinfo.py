@@ -221,7 +221,7 @@ class DoyleInfo(threading.Thread):
                     row = [style,
                            '%s (%s)' % (self.ageToString(age), self.ageToString(
                                datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
-                           server,
+                           (server,doyleFile.queue),
                            '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
                            ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]),
                             doyleFile.file,
