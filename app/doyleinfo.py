@@ -14,7 +14,7 @@ from app.doylefolder import DoyleFolder, DoyleFolderType
 from app.doylefiledb import DoyleFileDb
 from app.doylefile import DoyleFile
 
-serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
+serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI', 'VM-DOYLE-22']
 
 doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '']
 
