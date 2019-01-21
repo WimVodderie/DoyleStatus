@@ -169,9 +169,10 @@ class DoyleInfo(threading.Thread):
                     serverMessages.append('Executing')
 
                 # server has an upgrade pending
-                if upgradePending == True:
-                    serverMessages.append('Server has an upgrade pending')
-                    style = 'warning'
+                if server not in serverBlackList:
+                    if upgradePending == True:
+                        serverMessages.append('Server has an upgrade pending')
+                        style = 'warning'
 
                 # server should be busy but is not
                 if len(files) == 0 and server in self.serversForAllQueues:
