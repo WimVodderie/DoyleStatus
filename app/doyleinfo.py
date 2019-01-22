@@ -13,10 +13,36 @@ from app.doylefilecache import DoyleFileCache
 from app.doylefolder import DoyleFolder, DoyleFolderType
 from app.doylefiledb import DoyleFileDb
 from app.doylefile import DoyleFile
-from app.doyleresult import DoyleResult
-serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI']
 
-doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '../TestData' ]
+serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI', 'VM-DOYLE-22']
+
+doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', './testData']
+
+
+class DoyleResult:
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.clear('The information is still being gathered.')
+
+    def clear(self, message):
+        self.errorMsg = message
+        self.servers = []
+        self.serversAlerted = []
+        self.executingTests = []
+        self.executingTestsAlert = False
+        self.queuedTests = []
+        self.queuedTestsAlert = False
+
+    def copyFrom(self, newResult):
+        with self.lock:
+            self.errorMsg = newResult.errorMsg
+            self.servers = newResult.servers[:]
+            self.serversAlerted = newResult.serversAlerted[:]
+            self.executingTests = newResult.executingTests[:]
+            self.executingTestsAlert = newResult.executingTestsAlert
+            self.queuedTests = newResult.queuedTests[:]
+            self.queuedTestsAlert = newResult.queuedTestsAlert
 
 
 class DoyleInfo(threading.Thread):
@@ -44,6 +70,9 @@ class DoyleInfo(threading.Thread):
 
         self.keepRunning = True
         self.cleanDatabase = False
+
+        # keep track which servers should be busy and the first time this occured so we can report for how long it should have been busy
+        self.shouldBeBusyServersFirstDetected = {}
 
         threading.Thread.__init__(self)
         self.start()
@@ -146,14 +175,24 @@ class DoyleInfo(threading.Thread):
                     serverMessages.append('Executing')
 
                 # server has an upgrade pending
-                if upgradePending == True:
-                    serverMessages.append('Server has an upgrade pending')
-                    style = 'warning'
+                if server not in serverBlackList:
+                    if upgradePending == True:
+                        serverMessages.append('Server has an upgrade pending')
+                        style = 'warning'
 
                 # server should be busy but is not
-                if len(files) == 0 and server in self.serversForAllQueues:
-                    serverMessages.append('Server should be busy but is not')
-                    style = 'danger'
+                if server in self.serversForAllQueues:
+                    if len(files) == 0:
+                        if server not in self.shouldBeBusyServersFirstDetected:
+                            self.shouldBeBusyServersFirstDetected[server] = datetime.datetime.now()
+                        age = datetime.datetime.now() - self.shouldBeBusyServersFirstDetected[server]
+                        if age > datetime.timedelta(minutes=5):
+                            serverMessages.append('Server should be busy but is not')
+                            style = 'danger'
+                    else:
+                        # server is busy so take it out of dictionary
+                        if server in self.shouldBeBusyServersFirstDetected:
+                            del self.shouldBeBusyServersFirstDetected[server]
 
                 # check if doyle server is active
                 doyleServerAge = '---'
@@ -198,7 +237,7 @@ class DoyleInfo(threading.Thread):
                     row = [style,
                            '%s (%s)' % (self.ageToString(age), self.ageToString(
                                datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
-                           server,
+                           (server,doyleFile.queue),
                            '#{0}'.format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else '#----',
                            ('/'.join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, '{0:04}'.format(doyleFile.xbebuildid)]),
                             doyleFile.file,
