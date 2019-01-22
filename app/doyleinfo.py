@@ -16,7 +16,7 @@ from app.doylefile import DoyleFile
 
 serverBlackList = ['DOYLE-CORDOVA', 'VM-DOYLE-YUI', 'VM-DOYLE-22']
 
-doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', '']
+doyleBasePaths = ['/mnt/udrive/Doyle', r'U:\Doyle', './testData']
 
 
 class DoyleResult:
@@ -72,6 +72,9 @@ class DoyleInfo(threading.Thread):
 
         self.keepRunning = True
         self.cleanDatabase = False
+
+        # keep track which servers should be busy and the first time this occured so we can report for how long it should have been busy
+        self.shouldBeBusyServersFirstDetected = {}
 
         threading.Thread.__init__(self)
         self.start()
@@ -175,9 +178,18 @@ class DoyleInfo(threading.Thread):
                         style = 'warning'
 
                 # server should be busy but is not
-                if len(files) == 0 and server in self.serversForAllQueues:
-                    serverMessages.append('Server should be busy but is not')
-                    style = 'danger'
+                if server in self.serversForAllQueues:
+                    if len(files) == 0:
+                        if server not in self.shouldBeBusyServersFirstDetected:
+                            self.shouldBeBusyServersFirstDetected[server] = datetime.datetime.now()
+                        age = datetime.datetime.now() - self.shouldBeBusyServersFirstDetected[server]
+                        if age > datetime.timedelta(minutes=5):
+                            serverMessages.append('Server should be busy but is not')
+                            style = 'danger'
+                    else:
+                        # server is busy so take it out of dictionary
+                        if server in self.shouldBeBusyServersFirstDetected:
+                            del self.shouldBeBusyServersFirstDetected[server]
 
                 # check if doyle server is active
                 doyleServerAge = '---'
