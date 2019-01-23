@@ -1,5 +1,6 @@
 from app.doylefile import DoyleFile
 
+
 class DoyleFileCache:
     def __init__(self):
         # empty cache
@@ -34,4 +35,4 @@ class DoyleFileCache:
                 toremove.append(file)
                 self.removeCount = self.removeCount + 1
         for file in toremove:
-            del(self.cache[file])
+            del (self.cache[file])
