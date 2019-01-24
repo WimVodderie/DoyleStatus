@@ -163,6 +163,7 @@ class DoyleInfo(threading.Thread):
             # compile a list with all executing tests
             for server, files, upgradePending in self.serverFolder.items:
                 # should we display info about this server
+                doyleServerAge = "---"
                 serverMessages = []
                 style = "default"
 
@@ -177,8 +178,7 @@ class DoyleInfo(threading.Thread):
                         style = "warning"
 
                 # server should be busy but is not
-                if server in self.serversForAllQueues:
-                    if len(files) == 0:
+                if server in self.serversForAllQueues and len(files) == 0:
                         if server not in self.shouldBeBusyServersFirstDetected:
                             self.shouldBeBusyServersFirstDetected[server] = datetime.datetime.now()
                             print(f"Server {server} because 'should be busy' at {datetime.datetime.now()}")
@@ -187,14 +187,13 @@ class DoyleInfo(threading.Thread):
                             doyleServerAge = self.ageToString(age)
                             serverMessages.append("Server should be busy but is not")
                             style = "danger"
-                    else:
-                        # server is busy so take it out of dictionary
-                        if server in self.shouldBeBusyServersFirstDetected:
-                            del self.shouldBeBusyServersFirstDetected[server]
-                            print(f"Server {server} leaves 'should be busy' at {datetime.datetime.now()}")
+                else:
+                    # server is not needed or server is busy so take it out of dictionary
+                    if server in self.shouldBeBusyServersFirstDetected:
+                        del self.shouldBeBusyServersFirstDetected[server]
+                        print(f"Server {server} leaves 'should be busy' at {datetime.datetime.now()}")
 
                 # check if doyle server is active
-                doyleServerAge = "---"
                 if server not in serverBlackList:
                     aliveFile = os.path.join(self.serversPath, server, "alive.dat")
                     if os.path.isfile(aliveFile):
