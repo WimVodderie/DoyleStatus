@@ -163,6 +163,7 @@ class DoyleInfo(threading.Thread):
             # compile a list with all executing tests
             for server, files, upgradePending in self.serverFolder.items:
                 # should we display info about this server
+                doyleServerAge = "---"
                 serverMessages = []
                 style = "default"
 
@@ -194,7 +195,6 @@ class DoyleInfo(threading.Thread):
                             print(f"Server {server} leaves 'should be busy' at {datetime.datetime.now()}")
 
                 # check if doyle server is active
-                doyleServerAge = "---"
                 if server not in serverBlackList:
                     aliveFile = os.path.join(self.serversPath, server, "alive.dat")
                     if os.path.isfile(aliveFile):
