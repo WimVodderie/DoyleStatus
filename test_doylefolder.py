@@ -1,5 +1,5 @@
 import unittest
-import doylefolder
+from app import doylefolder
 
 class mocked_cache:
     def getDoyleFile(subdir,file):

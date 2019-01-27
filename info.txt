@@ -16,3 +16,14 @@ On the Pi:
 - useful:
     start DoyleStatus.py in tmux and press "Ctrl+b" d to detach session, keeps running in the background
     "tmux attach" after login to get back
+
+
+# to run pytest in the virtual environment, add -v for more info
+either:
+    python -m unittest discover
+or:
+    python -m pytest
+or with coverage:
+    # pip install pytest-cov first
+    python -m pytest --cov=app
+    coverage html # -> creates htmlcov folder

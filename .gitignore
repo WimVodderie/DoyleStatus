@@ -2,4 +2,6 @@ __pycache__/
 app/__pycache__/
 venv/
 .vscode/
+.coverage
+htmlcov/
 doyle.db
