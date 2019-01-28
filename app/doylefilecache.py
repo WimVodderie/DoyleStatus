@@ -45,5 +45,5 @@ class DoyleFileCache:
         self.removeCount = self.removeCount + len(toremove)
         # remove them from the cache
         for (file,doyleFile) in toremove:
-            del(self.cache[file])
+            del (self.cache[file])
         return toremove

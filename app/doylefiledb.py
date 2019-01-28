@@ -34,10 +34,7 @@ class DoyleFileDb(threading.Thread):
 
         # check if table exists
         c = self.db.cursor()
-        c.execute(
-            'SELECT name FROM sqlite_master WHERE type="table" AND name="%s"'
-            % DoyleFileDb.TABLE_NAME
-        )
+        c.execute('SELECT name FROM sqlite_master WHERE type="table" AND name="%s"' % DoyleFileDb.TABLE_NAME)
         result = c.fetchall()
         c.close()
 
@@ -88,10 +85,7 @@ class DoyleFileDb(threading.Thread):
     def _loadFile(self, doyleFile):
         # try to get entry from database
         c = self.db.cursor()
-        c.execute(
-            'SELECT * FROM %s WHERE file IS "%s"'
-            % (DoyleFileDb.TABLE_NAME, doyleFile.file)
-        )
+        c.execute('SELECT * FROM %s WHERE file IS "%s"' % (DoyleFileDb.TABLE_NAME, doyleFile.file))
         result = c.fetchall()
         c.close()
 
@@ -123,21 +117,8 @@ class DoyleFileDb(threading.Thread):
         """ Add a doyleFile object to the database."""
         c = self.db.cursor()
         c.execute(
-            "INSERT INTO %s (file,target,type,server,queue,xbetree,xbegroup,xbeproject,xbebuildid,tfsbuildid,queuedtime) VALUES (?, ?, ? ,? ,? ,? ,? ,? ,? ,? ,? )"
-            % DoyleFileDb.TABLE_NAME,
-            (
-                doyleFile.file,
-                doyleFile.target,
-                doyleFile.type,
-                doyleFile.server,
-                doyleFile.queue,
-                doyleFile.xbetree,
-                doyleFile.xbegroup,
-                doyleFile.xbeproject,
-                doyleFile.xbebuildid,
-                doyleFile.tfsbuildid,
-                doyleFile.queuedTime,
-            ),
+            "INSERT INTO %s (file,target,type,server,queue,xbetree,xbegroup,xbeproject,xbebuildid,tfsbuildid,queuedtime) VALUES (?, ?, ? ,? ,? ,? ,? ,? ,? ,? ,? )" % DoyleFileDb.TABLE_NAME,
+            (doyleFile.file, doyleFile.target, doyleFile.type, doyleFile.server, doyleFile.queue, doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, doyleFile.xbebuildid, doyleFile.tfsbuildid, doyleFile.queuedTime),
         )
         self.db.commit()
         print("%s: inserted in db" % doyleFile.file)
@@ -148,37 +129,15 @@ class DoyleFileDb(threading.Thread):
     def _updateFile(self, doyleFile):
         """ Update the parts of the doyleFile that change."""
         # only update the database when something has changed
-        if (
-            doyleFile.firstExecutionTime != None
-            and doyleFile.lastExecutionTime != None
-            and doyleFile.server != None
-        ):
+        if doyleFile.firstExecutionTime != None and doyleFile.lastExecutionTime != None and doyleFile.server != None:
             c = self.db.cursor()
-            c.execute(
-                'UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"'
-                % (DoyleFileDb.TABLE_NAME, doyleFile.file),
-                (
-                    doyleFile.firstExecutionTime,
-                    doyleFile.lastExecutionTime,
-                    doyleFile.server,
-                ),
-            )
+            c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
             self.db.commit()
-            print(
-                "%s: saved to db (exec time %s -> %s @ %s)"
-                % (
-                    doyleFile.file,
-                    doyleFile.firstExecutionTime,
-                    doyleFile.lastExecutionTime,
-                    doyleFile.server,
-                )
-            )
+            print("%s: saved to db (exec time %s -> %s @ %s)" % (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
 
     def getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
         res = Queue()
-        self.reqs.put(
-            ("getExecutionTimes", (xbetree, xbegroup, xbeproject, target), res)
-        )
+        self.reqs.put(("getExecutionTimes", (xbetree, xbegroup, xbeproject, target), res))
         return res.get()
 
     def _getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
@@ -187,15 +146,9 @@ class DoyleFileDb(threading.Thread):
 
         c = self.db.cursor()
         if xbetree == None or xbetree == "":
-            c.execute(
-                'SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbegroup="%s" AND xbeproject="%s" AND target="%s"'
-                % (DoyleFileDb.TABLE_NAME, xbegroup, xbeproject, target)
-            )
+            c.execute('SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbegroup="%s" AND xbeproject="%s" AND target="%s"' % (DoyleFileDb.TABLE_NAME, xbegroup, xbeproject, target))
         else:
-            c.execute(
-                'SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbetree="%s" AND xbegroup="%s" AND xbeproject="%s" AND target="%s"'
-                % (DoyleFileDb.TABLE_NAME, xbetree, xbegroup, xbeproject, target)
-            )
+            c.execute('SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbetree="%s" AND xbegroup="%s" AND xbeproject="%s" AND target="%s"' % (DoyleFileDb.TABLE_NAME, xbetree, xbegroup, xbeproject, target))
         entries = c.fetchall()
         c.close()
 
@@ -205,10 +158,7 @@ class DoyleFileDb(threading.Thread):
         times = [x for x in times if x > 10.0]
 
         end = timer()
-        print(
-            "Got %s (%s useful) from db, took %.4fs"
-            % (len(entries), len(times), (end - start))
-        )
+        print("Got %s (%s useful) from db, took %.4fs" % (len(entries), len(times), (end - start)))
 
         return times
 
@@ -225,32 +175,21 @@ class DoyleFileDb(threading.Thread):
         failTime = 0.0
 
         try:
-            times = self._getExecutionTimes(
-                doyleFile.xbetree,
-                doyleFile.xbegroup,
-                doyleFile.xbeproject,
-                doyleFile.target,
-            )
+            times = self._getExecutionTimes(doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, doyleFile.target)
 
             if len(times) == 0:
                 # no data ? guess 1 hour as warning and 2 hours as fail
                 averageTime = 3600.0
                 warnTime = 3600.0
                 failTime = 7200.0
-                print(
-                    "%s: 0 entries in db -> warn %s fail %s"
-                    % (doyleFile.file, warnTime, failTime)
-                )
+                print("%s: 0 entries in db -> warn %s fail %s" % (doyleFile.file, warnTime, failTime))
 
             elif len(times) == 1:
                 # cannot do statistics when there is only 1 data point
                 averageTime = times[0]
                 warnTime = averageTime * 1.5
                 failTime = averageTime * 2.0
-                print(
-                    "%s: 1 entry in db %s -> warn %s fail %s"
-                    % (doyleFile.file, averageTime, warnTime, failTime)
-                )
+                print("%s: 1 entry in db %s -> warn %s fail %s" % (doyleFile.file, averageTime, warnTime, failTime))
 
             else:
                 # calculate mean and standard deviation
@@ -269,20 +208,7 @@ class DoyleFileDb(threading.Thread):
                 averageTime = mf
                 warnTime = mf + 1 * sdf
                 failTime = mf + 3 * sdf
-                print(
-                    "%s: %s d%s (%s) -> %s d%s (%s) -> warn %s fail %s"
-                    % (
-                        doyleFile.file,
-                        m,
-                        sd,
-                        len(times),
-                        mf,
-                        sdf,
-                        len(tf),
-                        warnTime,
-                        failTime,
-                    )
-                )
+                print("%s: %s d%s (%s) -> %s d%s (%s) -> warn %s fail %s" % (doyleFile.file, m, sd, len(times), mf, sdf, len(tf), warnTime, failTime))
 
         except:
             print("Gathering times failed with exception: %s" % traceback.format_exc())
@@ -309,19 +235,13 @@ class DoyleFileDb(threading.Thread):
         c.close()
 
         end = timer()
-        print(
-            "Got %s on %s from db, took %.4fs"
-            % (len(entries), doyleServer, (end - start))
-        )
+        print("Got %s on %s from db, took %.4fs" % (len(entries), doyleServer, (end - start)))
         return entries
 
     def _removeUselessItems(self):
         """ Remove all items that have no first or last execution time."""
         c = self.db.cursor()
-        c.execute(
-            "DELETE FROM %s WHERE firstexecutiontime IS NULL OR lastexecutiontime IS NULL"
-            % DoyleFileDb.TABLE_NAME
-        )
+        c.execute("DELETE FROM %s WHERE firstexecutiontime IS NULL OR lastexecutiontime IS NULL" % DoyleFileDb.TABLE_NAME)
         self.db.commit()
 
     def _removeOldTests(self):
@@ -330,10 +250,7 @@ class DoyleFileDb(threading.Thread):
 
         # first get a list of all unique tests
         c = self.db.cursor()
-        c.execute(
-            "SELECT DISTINCT xbetree,xbegroup,xbeproject,target FROM %s"
-            % (DoyleFileDb.TABLE_NAME)
-        )
+        c.execute("SELECT DISTINCT xbetree,xbegroup,xbeproject,target FROM %s" % (DoyleFileDb.TABLE_NAME))
         allTests = c.fetchall()
         c.close()
 
@@ -347,10 +264,7 @@ class DoyleFileDb(threading.Thread):
 
             # get the execution time of the 100th instance of this test
             c = self.db.cursor()
-            c.execute(
-                'SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100'
-                % (DoyleFileDb.TABLE_NAME, *test)
-            )
+            c.execute('SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100' % (DoyleFileDb.TABLE_NAME, *test))
             result = c.fetchall()
             c.close()
 
@@ -358,17 +272,11 @@ class DoyleFileDb(threading.Thread):
             if len(result) == 1:
                 numberOfTestsCleaned = numberOfTestsCleaned + 1
                 keepFirstExecutionTime = result[0][0]
-                print(
-                    "%s -> purge older than %s"
-                    % (".".join(test), keepFirstExecutionTime)
-                )
+                print("%s -> purge older than %s" % (".".join(test), keepFirstExecutionTime))
 
                 # delete the records that executed before the selected time and get the count of deleted records
                 c = self.db.cursor()
-                c.execute(
-                    'DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"'
-                    % (DoyleFileDb.TABLE_NAME, *test, keepFirstExecutionTime)
-                )
+                c.execute('DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"' % (DoyleFileDb.TABLE_NAME, *test, keepFirstExecutionTime))
                 c.execute("SELECT changes()")
                 result = c.fetchall()
                 if len(result) > 0:
@@ -384,10 +292,7 @@ class DoyleFileDb(threading.Thread):
         self.db.commit()
 
         end = timer()
-        print(
-            "Removed %s rows from %s of %s distinct tests, took %.4fs"
-            % (numberOfRowsDeleted, numberOfTestsCleaned, numberOfTests, (end - start))
-        )
+        print("Removed %s rows from %s of %s distinct tests, took %.4fs" % (numberOfRowsDeleted, numberOfTestsCleaned, numberOfTests, (end - start)))
         return (numberOfRowsDeleted, numberOfTestsCleaned, numberOfTests)
 
     def cleanupDatabase(self):

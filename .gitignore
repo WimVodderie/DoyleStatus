@@ -2,6 +2,7 @@ __pycache__/
 app/__pycache__/
 venv/
 .vscode/
+.pytest_cache/
 .coverage
 htmlcov/
 doyle.db
