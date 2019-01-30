@@ -27,3 +27,6 @@ or with coverage:
     # pip install pytest-cov first
     python -m pytest --cov=app
     coverage html # -> creates htmlcov folder
+
+even easier:
+    py.test
