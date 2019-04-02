@@ -78,8 +78,3 @@ class TestDoyleFileCache:
             assert file == "file" + str(i)
             assert doyleFile.name == "file" + str(i)
             i = i + 2
-
-
-if __name__ == "__main__":
-    unittest.main()
-
