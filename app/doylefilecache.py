@@ -1,14 +1,14 @@
 
 class _CacheElement:
-    def __init__(self,doyleFile):
-        self.usedCount=0
-        self.doyleFile=doyleFile
+    def __init__(self, doyleFile):
+        self.usedCount = 0
+        self.doyleFile = doyleFile
 
     def hit(self):
-        self.usedCount=self.usedCount+1
+        self.usedCount = self.usedCount+1
 
     def clear(self):
-        self.usedCount=0
+        self.usedCount = 0
 
 
 class DoyleFileCache:
@@ -41,9 +41,9 @@ class DoyleFileCache:
         toremove = []
         for file in self.cache:
             if self.cache[file].usedCount == 0:
-                toremove.append((file,self.cache[file].doyleFile))
+                toremove.append((file, self.cache[file].doyleFile))
         self.removeCount = self.removeCount + len(toremove)
         # remove them from the cache
-        for (file,doyleFile) in toremove:
+        for (file, doyleFile) in toremove:
             del(self.cache[file])
         return toremove
