@@ -12,13 +12,14 @@ from timeit import default_timer as timer
 from app.doylefilecache import DoyleFileCache
 from app.doylefolder import DoyleFolder, DoyleFolderType
 from app.doylefiledb import DoyleFileDb
+from app.doylequeuedb import DoyleQueueDb
 from app.doylefile import DoyleFile
 from app.doyleresult import DoyleResult
 
 serverBlackList = ["DOYLE-CORDOVA", "VM-DOYLE-YUI", "VM-DOYLE-22"]
 
 doyleBasePaths = ["/mnt/udrive/Doyle", r"U:\Doyle", "./TestData"]
-
+dataBasePaths = ["/home/dfe01", "."]
 
 class DoyleInfo(threading.Thread):
     """ Main class that keeps and updates test info for queues and servers."""
@@ -39,9 +40,21 @@ class DoyleInfo(threading.Thread):
         self.result = DoyleResult()
         self._clean()
 
-        # create database and pass it (as a static) to DoyleFile
-        self.doyleFileDb = DoyleFileDb()
+        # find out where the databases are (first one wins)
+        for dataBasePath in dataBasePaths:
+            if os.path.isfile(os.path.join(dataBasePath,DoyleFileDb.DBFILE_NAME)):
+                print("Getting database at %s" % dataBasePath)
+                break
+        # if not found anywhere it could be a new database so we stay with the last tried path
+        else:
+            print("Creating new database at %s" % dataBasePath)
+
+        # create file database and pass it (as a static) to DoyleFile
+        self.doyleFileDb = DoyleFileDb(dataBasePath)
         DoyleFile.doyleFileDb = self.doyleFileDb
+
+        # create queue count database
+        self.doyleQueueDb = DoyleQueueDb(dataBasePath)
 
         self.keepRunning = True
         self.cleanDatabase = False
@@ -61,6 +74,7 @@ class DoyleInfo(threading.Thread):
         self.join()
         # stop the database thread
         self.doyleFileDb.quit()
+        self.doyleQueueDb.quit()
 
     def run(self):
         count = 20

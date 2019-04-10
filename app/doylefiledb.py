@@ -9,28 +9,19 @@ import threading
 # for measuring how long execution takes
 from timeit import default_timer as timer
 
-dataBasePaths = ["/home/dfe01/doyle.db", "doyle.db"]
-
-
 class DoyleFileDb(threading.Thread):
 
     TABLE_NAME = "executed_tests"
+    DBFILE_NAME = "doyle.db"
 
-    def __init__(self):
+    def __init__(self, dbFilePath):
         super(DoyleFileDb, self).__init__()
+        self.dbFile = os.path.join(dbFilePath,DoyleFileDb.DBFILE_NAME)
         self.reqs = Queue()
         self.start()
 
     def run(self):
-        # check the possible locations of the database, first one wins
-        for dataBasePath in dataBasePaths:
-            if os.path.isfile(dataBasePath):
-                print("Getting database at %s" % dataBasePath)
-                break
-        # if not found it could be a new database so we stay with the last tried path
-        if not os.path.isfile(dataBasePath):
-            print("Creating new database at %s" % dataBasePath)
-        self.db = sqlite3.connect(dataBasePath, detect_types=sqlite3.PARSE_DECLTYPES)
+        self.db = sqlite3.connect(self.dbFile, detect_types=sqlite3.PARSE_DECLTYPES)
 
         # check if table exists
         c = self.db.cursor()
