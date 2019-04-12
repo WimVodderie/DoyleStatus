@@ -1,5 +1,3 @@
-import logging
-
 from app import doylefolder
 from app import doylefile
 
