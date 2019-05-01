@@ -31,7 +31,7 @@ class DoyleQueueDb(threading.Thread):
 
         # create table if it does not exist yet
         if len(result) == 0 or DoyleQueueDb.TABLE_NAME not in result[0]:
-            cmd = f"CREATE TABLE {DoyleQueueDb.TABLE_NAME} (timestamp TIMESTAMP PRIMARY KEY, queuecount INTEGER)"
+            cmd = f"CREATE TABLE {DoyleQueueDb.TABLE_NAME} (timestamp TIMESTAMP, queuecount INTEGER)"
             print(cmd)
             self.db.execute(cmd)
             self.db.commit()
@@ -58,12 +58,11 @@ class DoyleQueueDb(threading.Thread):
         self.join()
 
     def addCount(self, timestamp, count):
-        res = Queue()
-        self.reqs.put(("addCount", timestamp, count))
+        self.reqs.put(("addCount", (timestamp, count), None))
 
     def _addCount(self, timestamp, count):
         c = self.db.cursor()
-        c.execute(f"INSERT INTO {DoyleQueueDb.TABLE_NAME} (timestamp,counts) VALUES (?, ?)" % (timestamp,count) )
+        c.execute(f"INSERT INTO {DoyleQueueDb.TABLE_NAME} (timestamp,queuecount) VALUES (?, ?)",(timestamp,count) )
         self.db.commit()
         print(f"{count} at {timestamp} : inserted in db")
 
@@ -78,7 +77,7 @@ class DoyleQueueDb(threading.Thread):
         start = timer()
 
         c = self.db.cursor()
-        c.execute(f'SELECT * FROM {DoyleQueueDb.TABLE_NAME} WHERE timestamp > "%s" AND timestamp < "%s"' % (fromtimestamp, totimestamp))
+        c.execute(f'SELECT * FROM {DoyleQueueDb.TABLE_NAME} WHERE timestamp > "{fromtimestamp}" AND timestamp < "{totimestamp}"')
         entries = c.fetchall()
         c.close()
 

@@ -152,6 +152,9 @@ class DoyleInfo(threading.Thread):
                         self.serversForAllQueues.extend(self.serverConfigs[queue.upper()])
             self.serversForAllQueues = list(set(self.serversForAllQueues))
 
+            # update the number of queued tests
+            self.doyleQueueDb.addCount(datetime.datetime.now(),self.queueFolder.count)
+
             # compile two lists with servers to report: the first list has all the servers, the second has only the servers that have non-default style
             # compile a list with all executing tests
             for server, files, upgradePending in self.serverFolder.items:
