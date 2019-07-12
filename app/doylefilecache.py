@@ -1,7 +1,7 @@
 
 class _CacheElement:
     def __init__(self, doyleFile):
-        self.usedCount = 0
+        self.usedCount = 1
         self.doyleFile = doyleFile
 
     def hit(self):
