@@ -19,7 +19,7 @@ from app.doyleresult import DoyleResult
 serverBlackList = ["DOYLE-CORDOVA", "VM-DOYLE-YUI", "VM-DOYLE-22"]
 
 doyleBasePaths = ["/mnt/udrive/Doyle", r"U:\Doyle", "./TestData"]
-dataBasePaths = ["/home/dfe01", "."]
+dataBasePaths = ["/tmp","/home/dfe01", "."]
 
 class DoyleInfo(threading.Thread):
     """ Main class that keeps and updates test info for queues and servers."""
