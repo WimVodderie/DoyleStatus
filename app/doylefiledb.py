@@ -256,7 +256,7 @@ class DoyleFileDb(threading.Thread):
         start = timer()
 
         c = self.db.cursor()
-        c.execute(f'SELECT * FROM {DoyleQueueDb.TABLE_NAME} WHERE timestamp > "{fromtimestamp}" AND timestamp < "{totimestamp}"')
+        c.execute(f'SELECT * FROM {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} WHERE timestamp > "{fromtimestamp}" AND timestamp < "{totimestamp}"')
         entries = c.fetchall()
         c.close()
 
