@@ -5,6 +5,7 @@ from queue import Queue
 import statistics
 import sqlite3
 import threading
+import time
 
 # for measuring how long execution takes
 from timeit import default_timer as timer
@@ -15,9 +16,10 @@ class DoyleFileDb(threading.Thread):
     TABLE_NAME_QUEUECOUNTS = "queue_counts"
     DBFILE_NAME = "doyle.db"
 
-    def __init__(self, dbFilePath):
+    def __init__(self, dbFilePath, dbBackupPath):
         super(DoyleFileDb, self).__init__()
         self.dbFile = os.path.join(dbFilePath,DoyleFileDb.DBFILE_NAME)
+        self.dbBackupPath = dbBackupPath
         self.reqs = Queue()
         self.start()
 
@@ -27,17 +29,19 @@ class DoyleFileDb(threading.Thread):
         # check if table exists
         c = self.db.cursor()
         c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        result = c.fetchall()
+        table_names = [x[0] for x in c.fetchall()]
         c.close()
 
+        print(f"current db has following tables: {table_names}")
+
         # create table if it does not exist yet
-        if len(result) == 0 or DoyleFileDb.TABLE_NAME_TESTS not in result[0]:
+        if DoyleFileDb.TABLE_NAME_TESTS not in table_names:
             cmd = f"CREATE TABLE {DoyleFileDb.TABLE_NAME_TESTS} (file char(100) PRIMARY KEY, target char(100) NOT NULL, type char(10), server char(64) NOT NULL, queue char(64), xbetree char(32) NOT NULL, xbegroup char(64) NOT NULL, xbeproject char(100) NOT NULL, xbebuildid INTEGER, tfsbuildid INTEGER, queuedtime TIMESTAMP, firstexecutiontime TIMESTAMP, lastexecutiontime TIMESTAMP)"
             print(cmd)
             self.db.execute(cmd)
             self.db.commit()
 
-        if len(result) == 0 or DoyleFileDb.TABLE_NAME_QUEUECOUNTS not in result[0]:
+        if DoyleFileDb.TABLE_NAME_QUEUECOUNTS not in table_names:
             cmd = f"CREATE TABLE {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp TIMESTAMP, queuecount INTEGER)"
             print(cmd)
             self.db.execute(cmd)
@@ -64,6 +68,8 @@ class DoyleFileDb(threading.Thread):
                 res.put(self._getCounts(*arg))
             if req == "cleanupDatabase":
                 res.put(self._cleanupDatabase())
+            if req == "backupDatabase":
+                self._backupDatabase()
             if req == "--close--":
                 break
 
@@ -330,3 +336,14 @@ class DoyleFileDb(threading.Thread):
     def _cleanupDatabase(self):
         self._removeUselessItems()
         self._removeOldTests()
+
+    def backupDatabase(self):
+        self.reqs.put(("backupDatabase", None, None))
+
+    def _backupDatabase(self):
+        backupDbFile = os.path.join(self.dbBackupPath,"doyledb-" + time.strftime("%Y%m%d-%H%M%S")+".db")
+        print(f"Backing up database to {backupDbFile}")
+        backup_db=sqlite3.connect(backupDbFile)
+        self.db.backup(backup_db)
+        backup_db.close()
+        print(f"Backing up database done")
