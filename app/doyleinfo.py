@@ -24,7 +24,7 @@ class FolderConfiguration:
     databasePath:str
     databaseBackupPath:str
 
-onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle","/tmp","/mnt/udrive/Doyle/Db")
+onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle","/tmp","/mnt/udrive/Doyle/Databases")
 onWindowsReal = FolderConfiguration("U:\\Doyle",".","U:\\Doyle\\Db")
 onLinuxTest = FolderConfiguration("./TestData","/tmp","/tmp/Db")
 onWindowsTest = FolderConfiguration(".\\TestData",".\\TestData",".\\TestData\\Db")
