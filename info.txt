@@ -1,7 +1,8 @@
 # get source from github
 git clone www.github.com\WimVodderie\DoyleStatus
-# create virtual environment
-py -m venv venv
+# create virtual environment (may need to 'apt instal python3-venv' first)
+python3 -m venv venv
+
 # activate the virtual environment (in cmd.exe)
 cmd.exe: .\venv\Scripts\Activate.bat
 powershell: .\venv\Scripts\Activate.ps1
@@ -10,9 +11,6 @@ linux: source ./venv/bin/activate
 py -m pip install flask
 py -m pip install flask-wtf
 
-On the Pi:
-- install python 3.6.4 from source
-- install (pip) flask and flask-wtf
 - useful:
     start DoyleStatus.py in tmux and press "Ctrl+b" d to detach session, keeps running in the background
     "tmux attach" after login to get back
