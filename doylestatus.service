@@ -1,0 +1,14 @@
+[Unit]
+Description=DoyleStatus
+After=network.target
+
+[Service]
+ExecStart=/home/dfe01/services/doylestatus/start.sh
+WorkingDirectory=/home/dfe01/services/doylestatus
+StandardOut=inherit
+StandardError=inherit
+Restart=always
+User=dfe01
+
+[Install]
+WantedBy=multi-user.target

@@ -63,3 +63,9 @@ def clean():
 @doyleStatusApp.route("/history/<serverName>")
 def history(serverName):
     return render_template("history.html", counts=doyleStatusApp.doyleInfo.getCounts(), servername=serverName, status=doyleStatusApp.doyleInfo.getHistory(serverName))
+
+
+@doyleStatusApp.route("/backupdb")
+def backupDatabase():
+    doyleStatusApp.doyleInfo.backupDatabase()
+    return "Backing up database"

@@ -1,14 +1,15 @@
 import os
 import datetime
 
-from app import doylequeuedb
+from app import doylefiledb
 
-testDbPath="./TestData/TestDb"
+#testDbPath="./TestData/TestDb"
+testDbPath="/tmp"
 
 class TestDoyleQueueDb:
     def setup(self):
-        os.remove(f"{testDbPath}/{doylequeuedb.DoyleQueueDb.DBFILE_NAME}")
-        self.d = doylequeuedb.DoyleQueueDb(testDbPath)
+        os.remove(f"{testDbPath}/{doylefiledb.DoyleFileDb.DBFILE_NAME}")
+        self.d = doylefiledb.DoyleFileDb(testDbPath)
 
     def teardown(self):
         self.d.quit()

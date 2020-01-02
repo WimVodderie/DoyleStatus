@@ -5,18 +5,21 @@ from queue import Queue
 import statistics
 import sqlite3
 import threading
+import time
 
 # for measuring how long execution takes
 from timeit import default_timer as timer
 
 class DoyleFileDb(threading.Thread):
 
-    TABLE_NAME = "executed_tests"
+    TABLE_NAME_TESTS = "executed_tests"
+    TABLE_NAME_QUEUECOUNTS = "queue_counts"
     DBFILE_NAME = "doyle.db"
 
-    def __init__(self, dbFilePath):
+    def __init__(self, dbFilePath, dbBackupPath):
         super(DoyleFileDb, self).__init__()
         self.dbFile = os.path.join(dbFilePath,DoyleFileDb.DBFILE_NAME)
+        self.dbBackupPath = dbBackupPath
         self.reqs = Queue()
         self.start()
 
@@ -25,16 +28,21 @@ class DoyleFileDb(threading.Thread):
 
         # check if table exists
         c = self.db.cursor()
-        c.execute('SELECT name FROM sqlite_master WHERE type="table" AND name="%s"' % DoyleFileDb.TABLE_NAME)
-        result = c.fetchall()
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        table_names = [x[0] for x in c.fetchall()]
         c.close()
 
+        print(f"current db has following tables: {table_names}")
+
         # create table if it does not exist yet
-        if len(result) == 0 or DoyleFileDb.TABLE_NAME not in result[0]:
-            cmd = (
-                "CREATE TABLE %s (file char(100) PRIMARY KEY, target char(100) NOT NULL, type char(10), server char(64) NOT NULL, queue char(64), xbetree char(32) NOT NULL, xbegroup char(64) NOT NULL, xbeproject char(100) NOT NULL, xbebuildid INTEGER, tfsbuildid INTEGER, queuedtime TIMESTAMP, firstexecutiontime TIMESTAMP, lastexecutiontime TIMESTAMP)"
-                % DoyleFileDb.TABLE_NAME
-            )
+        if DoyleFileDb.TABLE_NAME_TESTS not in table_names:
+            cmd = f"CREATE TABLE {DoyleFileDb.TABLE_NAME_TESTS} (file char(100) PRIMARY KEY, target char(100) NOT NULL, type char(10), server char(64) NOT NULL, queue char(64), xbetree char(32) NOT NULL, xbegroup char(64) NOT NULL, xbeproject char(100) NOT NULL, xbebuildid INTEGER, tfsbuildid INTEGER, queuedtime TIMESTAMP, firstexecutiontime TIMESTAMP, lastexecutiontime TIMESTAMP)"
+            print(cmd)
+            self.db.execute(cmd)
+            self.db.commit()
+
+        if DoyleFileDb.TABLE_NAME_QUEUECOUNTS not in table_names:
+            cmd = f"CREATE TABLE {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp TIMESTAMP, queuecount INTEGER)"
             print(cmd)
             self.db.execute(cmd)
             self.db.commit()
@@ -54,8 +62,14 @@ class DoyleFileDb(threading.Thread):
                 res.put(self._getExpectedExecutionTime(arg))
             if req == "getDoyleHistory":
                 res.put(self._getDoyleHistory(*arg))
+            if req == "addCount":
+                self._addCount(*arg)
+            if req == "getCounts":
+                res.put(self._getCounts(*arg))
             if req == "cleanupDatabase":
                 res.put(self._cleanupDatabase())
+            if req == "backupDatabase":
+                self._backupDatabase()
             if req == "--close--":
                 break
 
@@ -76,7 +90,7 @@ class DoyleFileDb(threading.Thread):
     def _loadFile(self, doyleFile):
         # try to get entry from database
         c = self.db.cursor()
-        c.execute('SELECT * FROM %s WHERE file IS "%s"' % (DoyleFileDb.TABLE_NAME, doyleFile.file))
+        c.execute(f"SELECT * FROM {DoyleFileDb.TABLE_NAME_TESTS} WHERE file IS '{doyleFile.file}'")
         result = c.fetchall()
         c.close()
 
@@ -96,7 +110,7 @@ class DoyleFileDb(threading.Thread):
             doyleFile.firstExecutionTime = result[0][11]
             doyleFile.lastExecutionTime = result[0][12]
 
-            print("%s: loaded from db" % doyleFile.file)
+            print(f"{doyleFile.file}: loaded from db")
             return True
         else:
             return False
@@ -108,11 +122,11 @@ class DoyleFileDb(threading.Thread):
         """ Add a doyleFile object to the database."""
         c = self.db.cursor()
         c.execute(
-            "INSERT INTO %s (file,target,type,server,queue,xbetree,xbegroup,xbeproject,xbebuildid,tfsbuildid,queuedtime) VALUES (?, ?, ? ,? ,? ,? ,? ,? ,? ,? ,? )" % DoyleFileDb.TABLE_NAME,
+            f"INSERT INTO {DoyleFileDb.TABLE_NAME_TESTS} (file,target,type,server,queue,xbetree,xbegroup,xbeproject,xbebuildid,tfsbuildid,queuedtime) VALUES (?, ?, ? ,? ,? ,? ,? ,? ,? ,? ,? )",
             (doyleFile.file, doyleFile.target, doyleFile.type, doyleFile.server, doyleFile.queue, doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, doyleFile.xbebuildid, doyleFile.tfsbuildid, doyleFile.queuedTime),
         )
         self.db.commit()
-        print("%s: inserted in db" % doyleFile.file)
+        print(f"{doyleFile.file}: inserted in db")
 
     def updateFile(self, doyleFile):
         self.reqs.put(("updateFile", doyleFile, None))
@@ -122,9 +136,9 @@ class DoyleFileDb(threading.Thread):
         # only update the database when something has changed
         if doyleFile.firstExecutionTime != None and doyleFile.lastExecutionTime != None and doyleFile.server != None:
             c = self.db.cursor()
-            c.execute('UPDATE %s SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS "%s"' % (DoyleFileDb.TABLE_NAME, doyleFile.file), (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
+            c.execute(f"UPDATE {DoyleFileDb.TABLE_NAME_TESTS} SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS '{doyleFile.file}'" , (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
             self.db.commit()
-            print("%s: saved to db (exec time %s -> %s @ %s)" % (doyleFile.file, doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
+            print(f"{doyleFile.file}: saved to db (exec time {doyleFile.firstExecutionTime} -> {doyleFile.lastExecutionTime} @ {doyleFile.server})")
 
     def getExecutionTimes(self, xbetree, xbegroup, xbeproject, target):
         res = Queue()
@@ -137,9 +151,9 @@ class DoyleFileDb(threading.Thread):
 
         c = self.db.cursor()
         if xbetree == None or xbetree == "":
-            c.execute('SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbegroup="%s" AND xbeproject="%s" AND target="%s"' % (DoyleFileDb.TABLE_NAME, xbegroup, xbeproject, target))
+            c.execute(f"SELECT firstexecutiontime,lastexecutiontime FROM {DoyleFileDb.TABLE_NAME_TESTS} WHERE firstexecutiontime IS NOT NULL AND xbegroup='{xbegroup}' AND xbeproject='{xbeproject}' AND target='{target}'")
         else:
-            c.execute('SELECT firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND xbetree="%s" AND xbegroup="%s" AND xbeproject="%s" AND target="%s"' % (DoyleFileDb.TABLE_NAME, xbetree, xbegroup, xbeproject, target))
+            c.execute(f"SELECT firstexecutiontime,lastexecutiontime FROM {DoyleFileDb.TABLE_NAME_TESTS} WHERE firstexecutiontime IS NOT NULL AND xbetree='{xbetree}' AND xbegroup='{xbegroup}' AND xbeproject='{xbeproject}' AND target='{target}'")
         entries = c.fetchall()
         c.close()
 
@@ -149,7 +163,7 @@ class DoyleFileDb(threading.Thread):
         times = [x for x in times if x > 10.0]
 
         end = timer()
-        print("Got %s (%s useful) from db, took %.4fs" % (len(entries), len(times), (end - start)))
+        print(f"Got {len(entries)} ({len(times)} useful) from db, took {(end - start):.4}s")
 
         return times
 
@@ -220,7 +234,7 @@ class DoyleFileDb(threading.Thread):
         c = self.db.cursor()
         c.execute(
             'SELECT xbetree,xbegroup,xbeproject,xbebuildid,target,firstexecutiontime,lastexecutiontime FROM %s WHERE firstexecutiontime IS NOT NULL AND server LIKE "%s" ORDER BY firstexecutiontime DESC LIMIT %s'
-            % (DoyleFileDb.TABLE_NAME, doyleServer, count)
+            % (DoyleFileDb.TABLE_NAME_TESTS, doyleServer, count)
         )
         entries = c.fetchall()
         c.close()
@@ -229,10 +243,38 @@ class DoyleFileDb(threading.Thread):
         print("Got %s on %s from db, took %.4fs" % (len(entries), doyleServer, (end - start)))
         return entries
 
+    def addCount(self, timestamp, count):
+        self.reqs.put(("addCount", (timestamp, count), None))
+
+    def _addCount(self, timestamp, count):
+        c = self.db.cursor()
+        c.execute(f"INSERT INTO {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp,queuecount) VALUES (?, ?)",(timestamp,count) )
+        self.db.commit()
+        print(f"{count} at {timestamp} : inserted in db")
+
+    def getCounts(self, fromtimestamp, totimestamp):
+        res = Queue()
+        self.reqs.put(("getCounts", (fromtimestamp, totimestamp), res))
+        return res.get()
+
+    def _getCounts(self, fromtimestamp, totimestamp):
+        """ Get a list of queue counts between the two timestamps."""
+        start = timer()
+
+        c = self.db.cursor()
+        c.execute(f'SELECT * FROM {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} WHERE timestamp > "{fromtimestamp}" AND timestamp < "{totimestamp}"')
+        entries = c.fetchall()
+        c.close()
+
+        end = timer()
+        print(f"Got {len(entries)} from db, took {end - start}s")
+
+        return entries
+
     def _removeUselessItems(self):
         """ Remove all items that have no first or last execution time."""
         c = self.db.cursor()
-        c.execute("DELETE FROM %s WHERE firstexecutiontime IS NULL OR lastexecutiontime IS NULL" % DoyleFileDb.TABLE_NAME)
+        c.execute("DELETE FROM %s WHERE firstexecutiontime IS NULL OR lastexecutiontime IS NULL" % DoyleFileDb.TABLE_NAME_TESTS)
         self.db.commit()
 
     def _removeOldTests(self):
@@ -241,7 +283,7 @@ class DoyleFileDb(threading.Thread):
 
         # first get a list of all unique tests
         c = self.db.cursor()
-        c.execute("SELECT DISTINCT xbetree,xbegroup,xbeproject,target FROM %s" % (DoyleFileDb.TABLE_NAME))
+        c.execute("SELECT DISTINCT xbetree,xbegroup,xbeproject,target FROM %s" % (DoyleFileDb.TABLE_NAME_TESTS))
         allTests = c.fetchall()
         c.close()
 
@@ -255,7 +297,7 @@ class DoyleFileDb(threading.Thread):
 
             # get the execution time of the 100th instance of this test
             c = self.db.cursor()
-            c.execute('SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100' % (DoyleFileDb.TABLE_NAME, *test))
+            c.execute('SELECT firstexecutiontime FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" ORDER BY firstexecutiontime DESC LIMIT 1 OFFSET 100' % (DoyleFileDb.TABLE_NAME_TESTS, *test))
             result = c.fetchall()
             c.close()
 
@@ -267,7 +309,7 @@ class DoyleFileDb(threading.Thread):
 
                 # delete the records that executed before the selected time and get the count of deleted records
                 c = self.db.cursor()
-                c.execute('DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"' % (DoyleFileDb.TABLE_NAME, *test, keepFirstExecutionTime))
+                c.execute('DELETE FROM %s WHERE xbetree IS "%s" AND xbegroup IS "%s" AND xbeproject="%s" AND target IS "%s" AND firstexecutiontime<="%s"' % (DoyleFileDb.TABLE_NAME_TESTS, *test, keepFirstExecutionTime))
                 c.execute("SELECT changes()")
                 result = c.fetchall()
                 if len(result) > 0:
@@ -294,3 +336,14 @@ class DoyleFileDb(threading.Thread):
     def _cleanupDatabase(self):
         self._removeUselessItems()
         self._removeOldTests()
+
+    def backupDatabase(self):
+        self.reqs.put(("backupDatabase", None, None))
+
+    def _backupDatabase(self):
+        backupDbFile = os.path.join(self.dbBackupPath,"doyledb-" + time.strftime("%Y%m%d-%H%M%S")+".db")
+        print(f"Backing up database to {backupDbFile}")
+        backup_db=sqlite3.connect(backupDbFile)
+        self.db.backup(backup_db)
+        backup_db.close()
+        print(f"Backing up database done")

@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import traceback
+from dataclasses import dataclass
 
 # for measuring how long execution takes
 from timeit import default_timer as timer
@@ -12,52 +13,57 @@ from timeit import default_timer as timer
 from app.doylefilecache import DoyleFileCache
 from app.doylefolder import DoyleFolder, DoyleFolderType
 from app.doylefiledb import DoyleFileDb
-from app.doylequeuedb import DoyleQueueDb
 from app.doylefile import DoyleFile
 from app.doyleresult import DoyleResult
 
 serverBlackList = ["DOYLE-CORDOVA", "VM-DOYLE-YUI", "VM-DOYLE-22"]
 
-doyleBasePaths = ["/mnt/udrive/Doyle", r"U:\Doyle", "./TestData"]
-dataBasePaths = ["/home/dfe01", "."]
+@dataclass
+class FolderConfiguration:
+    testFilesRoot:str
+    databasePath:str
+    databaseBackupPath:str
+
+onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle","/tmp","/mnt/udrive/Doyle/Db")
+onWindowsReal = FolderConfiguration("U:\\Doyle",".","U:\\Doyle\\Db")
+onLinuxTest = FolderConfiguration("./TestData","/tmp","/tmp/Db")
+onWindowsTest = FolderConfiguration(".\\TestData",".\\TestData",".\\TestData\\Db")
 
 class DoyleInfo(threading.Thread):
     """ Main class that keeps and updates test info for queues and servers."""
 
     def __init__(self):
-        # determine where to look: either u:\doyle or /mnt/udrive/doyle
-        for doyleBasePath in doyleBasePaths:
-            if os.path.isdir(doyleBasePath):
-                print("Getting doyle info from %s" % doyleBasePath)
+
+        # find out which folder configuration to take
+        for config in [onLinuxReal,onWindowsReal,onLinuxTest,onWindowsTest]:
+            print(f"Trying: {config}")
+            print(f"isdir {config.testFilesRoot}: {os.path.isdir(config.testFilesRoot)}")
+            print(f"isdir {config.databasePath}: {os.path.isdir(config.databasePath)}")
+
+
+            if os.path.isdir(config.testFilesRoot) and os.path.isdir(config.databasePath):
+                print(f"Getting doyle info from    : {config.testFilesRoot}")
+                print(f"Storing database on        : {config.databasePath}")
+                print(f"Storing database backup on : {config.databaseBackupPath}")
+                self.folderConfig = config
                 break
-        if not os.path.isdir(doyleBasePath):
-            sys.exit("cannot access TestQueues and TestServers!")
+        else:
+            sys.exit("None of the folder configurations lead to TestQueues and TestServers!")
 
         self.cache = DoyleFileCache()
-        self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, os.path.join(doyleBasePath, 'TestQueues'))
-        self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, os.path.join(doyleBasePath, 'TestServers'))
+        self.queueFolder = DoyleFolder(DoyleFolderType.queueFolder, os.path.join(self.folderConfig.testFilesRoot, "TestQueues"))
+        self.serverFolder = DoyleFolder(DoyleFolderType.serverFolder, os.path.join(self.folderConfig.testFilesRoot, "TestServers"))
 
         self.result = DoyleResult()
         self._clean()
 
-        # find out where the databases are (first one wins)
-        for dataBasePath in dataBasePaths:
-            if os.path.isfile(os.path.join(dataBasePath,DoyleFileDb.DBFILE_NAME)):
-                print("Getting database at %s" % dataBasePath)
-                break
-        # if not found anywhere it could be a new database so we stay with the last tried path
-        else:
-            print("Creating new database at %s" % dataBasePath)
-
         # create file database and pass it (as a static) to DoyleFile
-        self.doyleFileDb = DoyleFileDb(dataBasePath)
+        self.doyleFileDb = DoyleFileDb(self.folderConfig.databasePath,self.folderConfig.databaseBackupPath)
         DoyleFile.doyleFileDb = self.doyleFileDb
 
-        # create queue count database
-        self.doyleQueueDb = DoyleQueueDb(dataBasePath)
-
         self.keepRunning = True
-        self.cleanDatabase = False
+        self.cleanDatabaseRequested = False
+        self.backupDatabaseRequested = False
 
         # keep track which servers should be busy and the first time this occured so we can report for how long it should have been busy
         self.shouldBeBusyServersFirstDetected = {}
@@ -74,7 +80,6 @@ class DoyleInfo(threading.Thread):
         self.join()
         # stop the database thread
         self.doyleFileDb.quit()
-        self.doyleQueueDb.quit()
 
     def run(self):
         count = 20
@@ -82,10 +87,16 @@ class DoyleInfo(threading.Thread):
             if count >= 20:
                 self._update()
                 count = 0
-            if self.cleanDatabase == True:
+            if self.cleanDatabaseRequested == True:
                 self.result.clear("Busy cleaning the database, try again a bit later")
                 self.doyleFileDb.cleanupDatabase()
-                self.cleanDatabase = False
+                self.cleanDatabaseRequested = False
+
+            if self.backupDatabaseRequested == True:
+                self.result.clear("Backing up the database, try again a bit later")
+                self.doyleFileDb.backupDatabase()
+                self.backupDatabaseRequested = False
+
             count = count + 1
             time.sleep(1)
 
@@ -139,8 +150,8 @@ class DoyleInfo(threading.Thread):
             self.serverFolder.update(self.cache)
 
             # save all the doyleFiles that have not been referenced anymore
-            unusedEntries=self.cache.removeUnusedEntries()
-            for (file,doyleFile) in unusedEntries:
+            unusedEntries = self.cache.removeUnusedEntries()
+            for (file, doyleFile) in unusedEntries:
                 doyleFile.save()
 
             self.serverConfigs = self.getServerConfigs(self.serverFolder.baseFolder)
@@ -153,7 +164,7 @@ class DoyleInfo(threading.Thread):
             self.serversForAllQueues = list(set(self.serversForAllQueues))
 
             # update the number of queued tests
-            self.doyleQueueDb.addCount(datetime.datetime.now(),self.queueFolder.count)
+            self.doyleFileDb.addCount(datetime.datetime.now(), self.queueFolder.count)
 
             # compile two lists with servers to report: the first list has all the servers, the second has only the servers that have non-default style
             # compile a list with all executing tests
@@ -175,14 +186,14 @@ class DoyleInfo(threading.Thread):
 
                 # server should be busy but is not
                 if server in self.serversForAllQueues and len(files) == 0:
-                        if server not in self.shouldBeBusyServersFirstDetected:
-                            self.shouldBeBusyServersFirstDetected[server] = datetime.datetime.now()
-                            print(f"Server {server} because 'should be busy' at {datetime.datetime.now()}")
-                        age = datetime.datetime.now() - self.shouldBeBusyServersFirstDetected[server]
-                        if age > datetime.timedelta(minutes=5):
-                            doyleServerAge = self.ageToString(age)
-                            serverMessages.append("Server should be busy but is not")
-                            style = "danger"
+                    if server not in self.shouldBeBusyServersFirstDetected:
+                        self.shouldBeBusyServersFirstDetected[server] = datetime.datetime.now()
+                        print(f"Server {server} because 'should be busy' at {datetime.datetime.now()}")
+                    age = datetime.datetime.now() - self.shouldBeBusyServersFirstDetected[server]
+                    if age > datetime.timedelta(minutes=5):
+                        doyleServerAge = self.ageToString(age)
+                        serverMessages.append("Server should be busy but is not")
+                        style = "danger"
                 else:
                     # server is not needed or server is busy so take it out of dictionary
                     if server in self.shouldBeBusyServersFirstDetected:
@@ -191,7 +202,7 @@ class DoyleInfo(threading.Thread):
 
                 # check if doyle server is active
                 if server not in serverBlackList:
-                    aliveFile = os.path.join(self.serverFolder.baseFolder, server, 'alive.dat')
+                    aliveFile = os.path.join(self.serverFolder.baseFolder, server, "alive.dat")
                     if os.path.isfile(aliveFile):
                         age = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(aliveFile))
                         if age > datetime.timedelta(minutes=5):
@@ -233,11 +244,7 @@ class DoyleInfo(threading.Thread):
                         "%s (%s)" % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                         (server, doyleFile.queue),
                         "#{0}".format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else "#----",
-                        (
-                            "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]),
-                            doyleFile.file,
-                            "file:///u:/pgxbe/releases/" + "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]) + "/xbe_release.log",
-                        ),
+                        ("/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]), doyleFile.file, "file:///u:/pgxbe/releases/" + "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]) + "/xbe_release.log",),
                         doyleFile.type,
                         doyleFile.target,
                     ]
@@ -356,5 +363,7 @@ class DoyleInfo(threading.Thread):
         return {"history": toDisplay, "busyPercentage": busyPercentage}
 
     def startCleanDatabase(self):
-        self.cleanDatabase = True
+        self.cleanDatabaseRequested = True
 
+    def backupDatabase(self):
+        self.backupDatabaseRequested = True
