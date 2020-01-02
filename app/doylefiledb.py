@@ -6,6 +6,7 @@ import statistics
 import sqlite3
 import threading
 import time
+import traceback
 
 # for measuring how long execution takes
 from timeit import default_timer as timer
@@ -343,7 +344,11 @@ class DoyleFileDb(threading.Thread):
     def _backupDatabase(self):
         backupDbFile = os.path.join(self.dbBackupPath,"doyledb-" + time.strftime("%Y%m%d-%H%M%S")+".db")
         print(f"Backing up database to {backupDbFile}")
-        backup_db=sqlite3.connect(backupDbFile)
-        self.db.backup(backup_db)
-        backup_db.close()
-        print(f"Backing up database done")
+        try:
+            backup_db=sqlite3.connect(backupDbFile)
+            self.db.backup(backup_db)
+            backup_db.close()
+            print(f"Backing up database done")
+        except:
+            print(f"Backing up database failed: {traceback.format_exc()}")
+
