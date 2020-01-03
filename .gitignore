@@ -6,4 +6,4 @@ venv/
 .coverage
 htmlcov/
 doyle.db
-doyle-q.db
+TestData/
