@@ -75,7 +75,7 @@ while True:
         with open(newFileName,"wt") as f:
             f.write('export XBEHOME="u:/pgxbe/releases/B999/InstallersDoyle/Kourou/42"\n')
             f.write(f'# TargetName: TestCase{executionTime}\n')
-            f.write('export tfsbuildid="33451"\n')
+            f.write(f'export tfsbuildid="{33451+testNumber//10}"\n') # increment build id every 10 tests
             f.write('# ScriptFile: testfile;A.sh\n')
 
         queuedTests.append(QueuedInfo(newFileName,executionTime))
