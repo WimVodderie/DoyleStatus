@@ -1,6 +1,6 @@
 # get source from github
 git clone www.github.com\WimVodderie\DoyleStatus
-# create virtual environment (may need to 'apt instal python3-venv' first)
+# create virtual environment (may need to 'apt instal python3-venv python3-pip' first)
 python3 -m venv venv
 
 # activate the virtual environment (in cmd.exe)
@@ -11,6 +11,8 @@ linux: source ./venv/bin/activate
 # install flask
 py -m pip install flask
 py -m pip install flask-wtf
+py -m pip install wheel
+py -m pip install flask-talisman
 
 - useful:
     start DoyleStatus.py in tmux and press "Ctrl+b" d to detach session, keeps running in the background
