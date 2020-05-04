@@ -28,6 +28,7 @@ onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle","/tmp","/mnt/udrive/Doyle/
 onWindowsReal = FolderConfiguration("U:\\Doyle",".","U:\\Doyle\\Db")
 onLinuxTest = FolderConfiguration("./TestData","/tmp","/tmp/Db")
 onWindowsTest = FolderConfiguration(".\\TestData",".\\TestData",".\\TestData\\Db")
+onDocker = FolderConfiguration("/usr/src/DoyleData","/tmp","/tmp/Db")
 
 class DoyleInfo(threading.Thread):
     """ Main class that keeps and updates test info for queues and servers."""
@@ -35,7 +36,7 @@ class DoyleInfo(threading.Thread):
     def __init__(self):
 
         # find out which folder configuration to take
-        for config in [onLinuxReal,onWindowsReal,onLinuxTest,onWindowsTest]:
+        for config in [onLinuxReal,onWindowsReal,onLinuxTest,onWindowsTest,onDocker]:
             print(f"Trying: {config}")
             print(f"isdir {config.testFilesRoot}: {os.path.isdir(config.testFilesRoot)}")
             print(f"isdir {config.databasePath}: {os.path.isdir(config.databasePath)}")
