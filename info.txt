@@ -9,10 +9,7 @@ powershell: .\venv\Scripts\Activate.ps1
 linux: source ./venv/bin/activate
 
 # install flask
-py -m pip install flask
-py -m pip install flask-wtf
-py -m pip install wheel
-py -m pip install flask-talisman
+-> see requirements.txt
 
 - useful:
     start DoyleStatus.py in tmux and press "Ctrl+b" d to detach session, keeps running in the background
@@ -30,3 +27,45 @@ or with coverage:
 
 even easier:
     py.test
+
+
+##
+## DOCKER
+##
+goal: run docker on rpi so I can use docker images to run the trafficlight and pole apps
+
+- install fresh raspbian lite
+- sudo apt-get update && sudo apt-get upgrade
+- change username pi -> dfe01, password raspberry -> <default for dfe01>
+@ https://thepihut.com/blogs/raspberry-pi-tutorials/how-to-change-the-default-account-username-and-password
+    sudo passwd root
+    logout
+    # login as root
+    usermod -l dfe01 pi
+    usermod -m -d /home/dfe01 dfe01
+    logout
+    # login as dfe01
+    passwd
+
+- install docker
+@ https://phoenixnap.com/kb/docker-on-raspberry-pi
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker dfe01
+    logout
+    # login as dfe01
+    docker version
+
+- install git
+    sudo apt install git
+
+- clone DoyleStatus
+    git clone https://github.com/WimVodderie/DoyleStatus.git
+
+- create docker image
+    docker build .
+
+- run docker image (with input to simulation folder)
+    docker run -v ~/DoyleStatus/TestData:/usr/src/DoyleData -p 8080:8080 <image name>
+
+
