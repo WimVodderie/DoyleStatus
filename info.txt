@@ -56,6 +56,9 @@ goal: run docker on rpi so I can use docker images to run the trafficlight and p
     # login as dfe01
     docker version
 
+- install docker-compose
+    sudo pip3 install docker-compose
+
 - install git
     sudo apt install git
 
