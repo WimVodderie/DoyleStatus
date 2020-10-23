@@ -3,8 +3,8 @@ Description=DoyleStatus
 After=network.target
 
 [Service]
-ExecStart=/home/dfe01/services/doylestatus/start.sh
-WorkingDirectory=/home/dfe01/services/doylestatus
+ExecStart=/usr/bin/python3 -u DoyleStatus.py
+WorkingDirectory=/home/dfe01/services/DoyleStatus
 StandardOut=inherit
 StandardError=inherit
 Restart=always
