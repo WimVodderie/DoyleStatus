@@ -3,6 +3,7 @@ import operator
 import os
 from queue import Queue
 import statistics
+import shutil
 import sqlite3
 import threading
 import time
@@ -20,6 +21,7 @@ class DoyleFileDb(threading.Thread):
     def __init__(self, dbFilePath, dbBackupPath):
         super(DoyleFileDb, self).__init__()
         self.dbFile = os.path.join(dbFilePath,DoyleFileDb.DBFILE_NAME)
+        self.dbFilePath = dbFilePath
         self.dbBackupPath = dbBackupPath
         self.reqs = Queue()
         self.start()
@@ -343,13 +345,20 @@ class DoyleFileDb(threading.Thread):
         self.reqs.put(("backupDatabase", None, None))
 
     def _backupDatabase(self):
-        backupDbFile = os.path.join(self.dbBackupPath,f"doyledb-{time.strftime('%Y%m%d-%H%M%S')}.db")
-        print(f"Backing up database to {backupDbFile}")
         try:
-            backup_db=sqlite3.connect(backupDbFile)
+            # backup to db on local folder, cannot create a db on a share
+            backupFileName = f"doyledb-{time.strftime('%Y%m%d-%H%M%S')}.db"
+            tmpFile = os.path.join(self.dbFilePath,backupFileName)
+            print(f"Backing up database to {tmpFile}")
+            backup_db=sqlite3.connect(tmpFile)
             self.db.backup(backup_db)
             backup_db.close()
             print(f"Backing up database done")
+
+            # now move the file to where it should have been
+            tgtFile = os.path.join(self.dbBackupPath,backupFileName)
+            shutil.move(tmpFile,tgtFile)
+            print(f"Moved backup file to {tgtFile}")
         except:
             print(f"Backing up database failed: {traceback.format_exc()}")
 
