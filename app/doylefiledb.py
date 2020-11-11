@@ -65,10 +65,12 @@ class DoyleFileDb(threading.Thread):
                 res.put(self._getExpectedExecutionTime(arg))
             if req == "getDoyleHistory":
                 res.put(self._getDoyleHistory(*arg))
-            if req == "addCount":
-                self._addCount(*arg)
-            if req == "getCounts":
-                res.put(self._getCounts(*arg))
+            if req == "addQueuedCount":
+                self._addQueuedCount(*arg)
+            if req == "getQueuedCounts":
+                res.put(self._getQueuedCounts(*arg))
+            if req == "getQueuedChartData":
+                res.put(self._getQueuedChartData(*arg))
             if req == "cleanupDatabase":
                 res.put(self._cleanupDatabase())
             if req == "backupDatabase":
@@ -245,23 +247,23 @@ class DoyleFileDb(threading.Thread):
         print(f"Got {len(entries)} on {doyleServer} from db, took {(end - start):.04f}s")
         return entries
 
-    def addCount(self, timestamp, count):
-        self.reqs.put(("addCount", (timestamp, count), None))
+    def addQueuedCount(self, timestamp, count):
+        self.reqs.put(("addQueuedCount", (timestamp, count), None))
 
-    def _addCount(self, timestamp, count):
+    def _addQueuedCount(self, timestamp, count):
         c = self.db.cursor()
         c.execute(f"INSERT INTO {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp,queuecount) VALUES (?, ?)",(timestamp,count) )
         c.close()
         self.db.commit()
         print(f"{count} at {timestamp} : inserted in db")
 
-    def getCounts(self, fromtimestamp, totimestamp):
+    def getQueuedCounts(self, fromtimestamp, totimestamp):
         res = Queue()
         self.reqs.put(("getCounts", (fromtimestamp, totimestamp), res))
         return res.get()
 
-    def _getCounts(self, fromtimestamp, totimestamp):
-        """ Get a list of queue counts between the two timestamps."""
+    def _getQueuedCounts(self, fromtimestamp, totimestamp):
+        """ Get a list of queued test counts between the two timestamps."""
         start = timer()
 
         c = self.db.cursor()
@@ -273,6 +275,32 @@ class DoyleFileDb(threading.Thread):
         print(f"Got {len(entries)} from db, took {end - start}s")
 
         return entries
+
+    def getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
+        res = Queue()
+        self.reqs.put(("getQueuedChartData", (startTimeStamp, count, incrementTimeDelta), res))
+        return res.get()
+
+    def _getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
+        """ Get chart date (min/avg/max) for the number of tests queued in the requested timespan."""
+        start = timer()
+
+        counts=[]
+        fromTimeStamp,toTimeStamp  = startTimeStamp,startTimeStamp + incrementTimeDelta
+        for h in range(count):
+            c = self.db.cursor()
+            c.execute("SELECT queuecount FROM queue_counts WHERE timestamp BETWEEN ? AND ?", (fromTimeStamp, toTimeStamp))
+            result = c.fetchall()
+            c = [r[0] for r in result]
+            fromTimeStamp,toTimeStamp = toTimeStamp,toTimeStamp+incrementTimeDelta
+            if len(c)==0:
+                counts.append((fromTimeStamp,0,0,0))
+            else:
+                counts.append((fromTimeStamp,min(c),int(statistics.mean(c)),max(c)))
+
+        end = timer()
+        print(f"Got {len(counts)} from db, took {end - start}s")
+        return counts
 
     def _removeUselessItems(self):
         """ Remove all items that have no first or last execution time."""

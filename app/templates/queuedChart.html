@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="static/moment.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <title>My Chart.js Chart</title>
+</head>
+
+<body>
+  <div class="container">
+    <canvas id="myChart"></canvas>
+  </div>
+
+  <script>
+
+    var sampleDate = "{{ baseDate.strftime('%Y%m%d') }}";
+
+    // labels and datasets.data is empty for now, will be filled in later
+    var config = {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "min",
+          backgroundColor: "rgba(240, 140, 121, 0.0)",
+          borderColor: "rgba(140, 140, 140, 0.0)",
+          borderWidth: 0,
+          data: [],
+          fill: false,
+          radius: 0,
+          lineTension: 0,
+        }, {
+          label: "avg",
+          backgroundColor: "rgba(240, 140, 121, 0.8)",
+          borderColor: "rgba(140, 140, 140, 1.0)",
+          data: [],
+          fill: "-1",
+          lineTension: 0,
+        }, {
+          label: "max",
+          backgroundColor: "rgba(121, 200, 121, 0.8)",
+          borderColor: "rgba(140, 140, 140, 0.0)",
+          borderWidth: 0,
+          data: [],
+          fill: "-1",
+          line: false,
+          radius: 0,
+          lineTension: 0,
+        },
+        ]
+      },
+      options: {
+        tooltips: {
+          mode: 'index',
+          intersect: false,
+          displayColors: false,
+        },
+        responsive: true,
+        title: {
+          display: true,
+          text: "Number of queued tests (min/avg/max) for " + moment(sampleDate, "YYYYMMDD").format("DD-MM-YYYY"),
+        },
+        scales: {
+          xAxes: [
+            {
+              type: "time",
+              stacked: false,
+              time: {
+                tooltipFormat: "HH:mm",
+                displayFormats: {
+                  hour: "H:mm"
+                }
+              },
+              scaleLabel: {
+                display: true,
+                labelString: "Time"
+              },
+              ticks: {
+                maxRotation: 0
+              }
+            }
+          ],
+          yAxes: [{
+            stacked: false,
+            scaleLabel: {
+              display: true,
+              labelString: "value"
+            }
+          }
+          ]
+        },
+        pan: {
+          enabled: true,
+          mode: "x",
+          speed: 10,
+          threshold: 10
+        },
+        zoom: {
+          enabled: true,
+          drag: false,
+          mode: "xy",
+          limits: {
+            max: 10,
+            min: 0.5
+          }
+        }
+      }
+    };
+
+    window.onload = function () {
+
+      var ctx = document.getElementById("myChart").getContext("2d");
+
+      {% for c in counts %}
+      // label - min - avg - max
+      config.data.labels.push(moment("{{ c[0].strftime('%Y-%m-%dT%H:%M:%S Z')}}").toDate())
+      config.data.datasets[0].data.push('{{ c[1] }}')
+      config.data.datasets[1].data.push('{{ c[2] }}')
+      config.data.datasets[2].data.push('{{ c[3] }}')
+      {% endfor %}
+
+      window.myLine = new Chart(ctx, config);
+    };
+  </script>
+</body>
+
+</html>

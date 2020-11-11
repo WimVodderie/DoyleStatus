@@ -165,7 +165,7 @@ class DoyleInfo(threading.Thread):
             self.serversForAllQueues = list(set(self.serversForAllQueues))
 
             # update the number of queued tests
-            self.doyleFileDb.addCount(datetime.datetime.now(), self.queueFolder.count)
+            self.doyleFileDb.addQueuedCount(datetime.datetime.now(), self.queueFolder.count)
 
             # compile two lists with servers to report: the first list has all the servers, the second has only the servers that have non-default style
             # compile a list with all executing tests
@@ -368,3 +368,6 @@ class DoyleInfo(threading.Thread):
 
     def backupDatabase(self):
         self.backupDatabaseRequested = True
+
+    def getQueuedChartData(self,startTimeStamp,count,incrementTimeDelta):
+        return self.doyleFileDb.getQueuedChartData(startTimeStamp,count,incrementTimeDelta)

@@ -4,6 +4,7 @@ from app.doyleinfo import DoyleInfo
 
 from app.forms import HistoryForm
 
+import datetime
 
 @doyleStatusApp.route("/")
 @doyleStatusApp.route("/index")
@@ -69,3 +70,9 @@ def history(serverName):
 def backupDatabase():
     doyleStatusApp.doyleInfo.backupDatabase()
     return "Backing up database"
+
+
+@doyleStatusApp.route("/queued-chart")
+def queueCounts():
+    baseDate = datetime.datetime(2020,10,15,0,0,0)
+    return render_template('queuedChart.html', baseDate=baseDate, counts=doyleStatusApp.doyleInfo.getQueuedChartData(baseDate,24,datetime.timedelta(hours=1)))
