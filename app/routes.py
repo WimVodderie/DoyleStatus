@@ -73,6 +73,6 @@ def backupDatabase():
 
 
 @doyleStatusApp.route("/queued-chart")
-def queueCounts():
-    baseDate = datetime.datetime(2020,10,15,0,0,0)
+def queuedChart():
+    baseDate = datetime.datetime(2020,11,11,0,0,0)
     return render_template('queuedChart.html', baseDate=baseDate, counts=doyleStatusApp.doyleInfo.getQueuedChartData(baseDate,24,datetime.timedelta(hours=1)))
