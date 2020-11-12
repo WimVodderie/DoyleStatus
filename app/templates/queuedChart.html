@@ -5,6 +5,16 @@
 <script src="static/moment.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
 
+<form action="" method="post" name="login">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.startDate.label }}: {{ form.startDate(size=16) }} {{ form.submit() }}
+        <br> {% for error in form.startDate.errors %}
+        <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </p>
+</form>
+
 <div class="container">
   <canvas id="myChart"></canvas>
 </div>

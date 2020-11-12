@@ -285,22 +285,23 @@ class DoyleFileDb(threading.Thread):
         """ Get chart date (min/avg/max) for the number of tests queued in the requested timespan."""
         start = timer()
 
-        counts=[]
+        chartData=[]
         fromTimeStamp,toTimeStamp  = startTimeStamp,startTimeStamp + incrementTimeDelta
         for h in range(count):
             c = self.db.cursor()
             c.execute("SELECT queuecount FROM queue_counts WHERE timestamp BETWEEN ? AND ?", (fromTimeStamp, toTimeStamp))
             result = c.fetchall()
-            c = [r[0] for r in result]
-            fromTimeStamp,toTimeStamp = toTimeStamp,toTimeStamp+incrementTimeDelta
-            if len(c)==0:
-                counts.append((fromTimeStamp,0,0,0))
+            c.close()
+            counts = [r[0] for r in result]
+            if len(counts)==0:
+                chartData.append((fromTimeStamp,0,0,0))
             else:
-                counts.append((fromTimeStamp,min(c),int(statistics.mean(c)),max(c)))
+                chartData.append((fromTimeStamp,min(counts),int(statistics.mean(counts)),max(counts)))
+            fromTimeStamp,toTimeStamp = toTimeStamp,toTimeStamp+incrementTimeDelta
 
         end = timer()
-        print(f"Got {len(counts)} from db, took {end - start}s")
-        return counts
+        print(f"Got {len(chartData)} from db, took {end - start}s")
+        return chartData
 
     def _removeUselessItems(self):
         """ Remove all items that have no first or last execution time."""

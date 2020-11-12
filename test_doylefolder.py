@@ -40,6 +40,6 @@ class TestDoyleFolder:
     def test_update(self):
         m = mocked_cache()
         self.d.update(m)
-        assert len(self.d.items) == 9
+        assert len(self.d.items) == 10
         assert self.d.count == 22
         assert m.getCount == 22

@@ -5,11 +5,14 @@ from app import doylefiledb
 
 #testDbPath="./TestData/TestDb"
 testDbPath="/tmp"
+testDbBackupPath="/tmp"
 
 class TestDoyleQueueDb:
     def setup(self):
-        os.remove(f"{testDbPath}/{doylefiledb.DoyleFileDb.DBFILE_NAME}")
-        self.d = doylefiledb.DoyleFileDb(testDbPath)
+        dbFile = f"{testDbPath}/{doylefiledb.DoyleFileDb.DBFILE_NAME}"
+        if os.path.exists(dbFile):
+            os.remove(dbFile)
+        self.d = doylefiledb.DoyleFileDb(testDbPath,testDbBackupPath)
 
     def teardown(self):
         self.d.quit()

@@ -3,6 +3,7 @@ from app import doyleStatusApp
 from app.doyleinfo import DoyleInfo
 
 from app.forms import HistoryForm
+from app.forms import ChartForm
 
 import datetime
 
@@ -49,6 +50,11 @@ def selectServer():
         return render_template("select-server.html", counts=doyleStatusApp.doyleInfo.getCounts(), form=form)
 
 
+@doyleStatusApp.route("/history/<serverName>")
+def history(serverName):
+    return render_template("history.html", counts=doyleStatusApp.doyleInfo.getCounts(), servername=serverName, status=doyleStatusApp.doyleInfo.getHistory(serverName))
+
+
 @doyleStatusApp.route("/quitquitquit")
 def quit():
     doyleStatusApp.shutdown()
@@ -61,18 +67,17 @@ def clean():
     return "Cleaning database started"
 
 
-@doyleStatusApp.route("/history/<serverName>")
-def history(serverName):
-    return render_template("history.html", counts=doyleStatusApp.doyleInfo.getCounts(), servername=serverName, status=doyleStatusApp.doyleInfo.getHistory(serverName))
-
-
 @doyleStatusApp.route("/backupdb")
 def backupDatabase():
     doyleStatusApp.doyleInfo.backupDatabase()
     return "Backing up database"
 
 
-@doyleStatusApp.route("/queued-chart")
+@doyleStatusApp.route("/queued-chart", methods=["GET", "POST"])
 def queuedChart():
-    baseDate = datetime.datetime(2020,11,11,0,0,0)
-    return render_template('queuedChart.html', baseDate=baseDate, counts=doyleStatusApp.doyleInfo.getQueuedChartData(baseDate,24,datetime.timedelta(hours=1)))
+    form = ChartForm()
+    baseDate = datetime.datetime.combine(datetime.date.today(),datetime.time(0))
+    if form.validate_on_submit():
+        # form returns a date object which we need to convert to datetime
+        baseDate = datetime.datetime.combine(form.startDate.data,datetime.time(0))
+    return render_template('queuedChart.html', baseDate=baseDate, form=form, counts=doyleStatusApp.doyleInfo.getQueuedChartData(baseDate,24,datetime.timedelta(hours=1)))
