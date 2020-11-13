@@ -7,6 +7,7 @@ from app.forms import ChartForm
 
 import datetime
 
+
 @doyleStatusApp.route("/")
 @doyleStatusApp.route("/index")
 def index():
@@ -73,11 +74,28 @@ def backupDatabase():
     return "Backing up database"
 
 
+lastSelectedDate = datetime.date.min
+lastCounts = None
+
+
 @doyleStatusApp.route("/queued-chart", methods=["GET", "POST"])
 def queuedChart():
+
+    global lastSelectedDate
+    global lastCounts
+
     form = ChartForm()
-    baseDate = datetime.datetime.combine(datetime.date.today(),datetime.time(0))
-    if form.validate_on_submit():
-        # form returns a date object which we need to convert to datetime
-        baseDate = datetime.datetime.combine(form.startDate.data,datetime.time(0))
-    return render_template('queuedChart.html', baseDate=baseDate, form=form, counts=doyleStatusApp.doyleInfo.getQueuedChartData(baseDate,24,datetime.timedelta(hours=1)))
+
+    # no entry in form -> use last selected date
+    if form.startDate.data == datetime.date.min:
+        newDate = lastSelectedDate if lastSelectedDate != datetime.date.min else datetime.date.today()
+        form.startDate.data = newDate
+    else:
+        newDate = form.startDate.data
+
+    # when new date has been selected, get new data
+    if newDate != lastSelectedDate:
+        lastCounts = doyleStatusApp.doyleInfo.getQueuedChartData(datetime.datetime.combine(form.startDate.data, datetime.time(0)), 24, datetime.timedelta(hours=1))
+        lastSelectedDate = newDate
+
+    return render_template("queuedChart.html", date=lastSelectedDate, counts=lastCounts, form=form)

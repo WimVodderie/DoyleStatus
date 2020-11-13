@@ -293,9 +293,7 @@ class DoyleFileDb(threading.Thread):
             result = c.fetchall()
             c.close()
             counts = [r[0] for r in result]
-            if len(counts)==0:
-                chartData.append((fromTimeStamp,0,0,0))
-            else:
+            if len(counts)!=0:
                 chartData.append((fromTimeStamp,min(counts),int(statistics.mean(counts)),max(counts)))
             fromTimeStamp,toTimeStamp = toTimeStamp,toTimeStamp+incrementTimeDelta
 

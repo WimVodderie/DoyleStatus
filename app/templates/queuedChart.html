@@ -2,26 +2,28 @@
 
 {% block content %}
 
-<script src="static/moment.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
-
-<form action="" method="post" name="login">
-    {{ form.hidden_tag() }}
-    <p>
-        {{ form.startDate.label }}: {{ form.startDate(size=16) }} {{ form.submit() }}
-        <br> {% for error in form.startDate.errors %}
-        <span style="color: red;">[{{ error }}]</span>
-        {% endfor %}
-    </p>
+<form action="" method="post" name="get-date">
+  {{ form.hidden_tag() }}
+  <p>
+    {{ form.startDate.label }}: {{ form.startDate(size=16) }} {{ form.submit() }}
+    <br> {% for error in form.startDate.errors %}
+    <span style="color: red;">[{{ error }}]</span>
+    {% endfor %}
+  </p>
 </form>
+
+{% if counts|length == 0 %}
+<h4>No queue counts available for {{ date.strftime('%Y-%m-%d') }}</h4>
+{% else %}
 
 <div class="container">
   <canvas id="myChart"></canvas>
 </div>
 
-<script>
-  var sampleDate = "{{ baseDate.strftime('%Y%m%d') }}";
+<script src="static/moment.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
 
+<script>
   // labels and datasets.data is empty for now, will be filled in later
   var config = {
     type: "line",
@@ -29,7 +31,7 @@
       labels: [],
       datasets: [{
         label: "min",
-        backgroundColor: "rgba(240, 140, 121, 0.0)",
+        backgroundColor: "rgba(50, 150, 240, 0.0)",
         borderColor: "rgba(140, 140, 140, 0.0)",
         borderWidth: 0,
         data: [],
@@ -38,14 +40,14 @@
         lineTension: 0,
       }, {
         label: "avg",
-        backgroundColor: "rgba(240, 140, 121, 0.8)",
+        backgroundColor: "rgba(50, 150, 240, 0.8)",
         borderColor: "rgba(140, 140, 140, 1.0)",
         data: [],
         fill: "-1",
         lineTension: 0,
       }, {
         label: "max",
-        backgroundColor: "rgba(121, 200, 121, 0.8)",
+        backgroundColor: "rgba(240, 40, 40, 0.8)",
         borderColor: "rgba(140, 140, 140, 0.0)",
         borderWidth: 0,
         data: [],
@@ -65,7 +67,7 @@
       responsive: true,
       title: {
         display: true,
-        text: "Number of queued tests (min/avg/max) for " + moment(sampleDate, "YYYYMMDD").format("DD-MM-YYYY"),
+        text: "Number of queued tests (min/avg/max) for {{ date.strftime('%Y-%m-%d') }}",
       },
       scales: {
         xAxes: [
@@ -92,6 +94,9 @@
           scaleLabel: {
             display: true,
             labelString: "value"
+          },
+          ticks: {
+            beginAtZero: true
           }
         }
         ]
@@ -129,9 +134,6 @@
     window.myLine = new Chart(ctx, config);
   };
 </script>
+{% endif %}
 
 {% endblock %}
-
-
-
-
