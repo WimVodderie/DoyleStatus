@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import SubmitField, SelectField
 from wtforms.validators import DataRequired
 from wtforms import DateField
 
@@ -7,7 +7,7 @@ import datetime
 
 
 class HistoryForm(FlaskForm):
-    servername = StringField("Servername", default="", validators=[DataRequired()])
+    serverName = SelectField("Server name", choices=[])
     submit = SubmitField("Display")
 
 

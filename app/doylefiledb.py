@@ -72,6 +72,8 @@ class DoyleFileDb(threading.Thread):
                 res.put(self._getQueuedCounts(*arg))
             if req == "getQueuedChartData":
                 res.put(self._getQueuedChartData(*arg))
+            if req == "getServerList":
+                res.put(self._getServerList())
             if req == "cleanupDatabase":
                 res.put(self._cleanupDatabase())
             if req == "backupDatabase":
@@ -301,6 +303,27 @@ class DoyleFileDb(threading.Thread):
         end = timer()
         print(f"Got {len(chartData)} from db, took {end - start}s")
         return chartData
+
+    def getServerList(self):
+        res = Queue()
+        self.reqs.put(("getServerList", None, res))
+        return res.get()
+
+    def _getServerList(self):
+        """ Get a list of servers that have executed doyle tests."""
+        start = timer()
+
+        c = self.db.cursor()
+        c.execute("SELECT DISTINCT server FROM executed_tests ORDER BY server ASC")
+        result = c.fetchall()
+        serverList = [s[0] for s in result]
+        serverList.remove("")
+        serverList.remove("Startup")
+        c.close()
+
+        end = timer()
+        print(f"Got {len(serverList)} servers from db, took {end - start}s")
+        return serverList
 
     def _removeUselessItems(self):
         """ Remove all items that have no first or last execution time."""

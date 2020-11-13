@@ -377,3 +377,6 @@ class DoyleInfo(threading.Thread):
 
     def getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
         return self.doyleFileDb.getQueuedChartData(startTimeStamp, count, incrementTimeDelta)
+
+    def getServerList(self):
+        return self.doyleFileDb.getServerList()
