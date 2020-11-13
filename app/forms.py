@@ -7,7 +7,7 @@ import datetime
 
 
 class HistoryForm(FlaskForm):
-    servername = StringField("Servername", validators=[DataRequired()])
+    servername = StringField("Servername", default="", validators=[DataRequired()])
     submit = SubmitField("Display")
 
 

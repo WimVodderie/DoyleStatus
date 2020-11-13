@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<form action="" method="post" name="login">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.servername.label }} {{ form.servername(size=32) }} {{ form.submit() }}
+        <br> {% for error in form.servername.errors %}
+        <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </p>
+</form>
+
+{% if servername|length == 0 %}
+
+<h4>Select a server from the list</h4>
+
+{% else %}
+
 <h4>
     <span>History for {{ servername }} ({{ status.history|length }} entries, most recent on top, {{ '%0.1f' % status.busyPercentage}}% busy)</span>
 </h4>
@@ -17,4 +34,7 @@
     {% endfor %}
     </tbody>
 </table>
+
+{% endif %}
+
 {% endblock %}

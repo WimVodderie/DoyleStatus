@@ -41,19 +41,28 @@ def servers():
     return render_template("servers.html", counts=doyleStatusApp.doyleInfo.getCounts(), errorMsg=doyleStatusApp.doyleInfo.getErrorMsg(), servers=doyleStatusApp.doyleInfo.getServers())
 
 
-@doyleStatusApp.route("/select-server", methods=["GET", "POST"])
-def selectServer():
+lastServerName = ""
+lastServerHistory = {"history": [], "busyPercentage": 0.0}
+
+
+@doyleStatusApp.route("/history", methods=["GET", "POST"])
+def history():
+
+    global lastServerName
+    global lastServerHistory
+
     form = HistoryForm()
+
+    newServerName = lastServerName
+
     if form.validate_on_submit():
-        serverName = form.servername.data
-        return redirect("/history/%s" % serverName)
-    else:
-        return render_template("select-server.html", counts=doyleStatusApp.doyleInfo.getCounts(), form=form)
+        newServerName = form.servername.data
 
+    if newServerName != lastServerName:
+        lastServerHistory = doyleStatusApp.doyleInfo.getHistory(newServerName)
+        lastServerName = newServerName
 
-@doyleStatusApp.route("/history/<serverName>")
-def history(serverName):
-    return render_template("history.html", counts=doyleStatusApp.doyleInfo.getCounts(), servername=serverName, status=doyleStatusApp.doyleInfo.getHistory(serverName))
+    return render_template("history.html", counts=doyleStatusApp.doyleInfo.getCounts(), servername=lastServerName, status=lastServerHistory, form=form)
 
 
 @doyleStatusApp.route("/quitquitquit")

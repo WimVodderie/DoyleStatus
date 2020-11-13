@@ -12,6 +12,7 @@ import traceback
 # for measuring how long execution takes
 from timeit import default_timer as timer
 
+
 class DoyleFileDb(threading.Thread):
 
     TABLE_NAME_TESTS = "executed_tests"
@@ -20,7 +21,7 @@ class DoyleFileDb(threading.Thread):
 
     def __init__(self, dbFilePath, dbBackupPath):
         super(DoyleFileDb, self).__init__()
-        self.dbFile = os.path.join(dbFilePath,DoyleFileDb.DBFILE_NAME)
+        self.dbFile = os.path.join(dbFilePath, DoyleFileDb.DBFILE_NAME)
         self.dbFilePath = dbFilePath
         self.dbBackupPath = dbBackupPath
         self.reqs = Queue()
@@ -142,7 +143,7 @@ class DoyleFileDb(threading.Thread):
         # only update the database when something has changed
         if doyleFile.firstExecutionTime != None and doyleFile.lastExecutionTime != None and doyleFile.server != None:
             c = self.db.cursor()
-            c.execute(f"UPDATE {DoyleFileDb.TABLE_NAME_TESTS} SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS '{doyleFile.file}'" , (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
+            c.execute(f"UPDATE {DoyleFileDb.TABLE_NAME_TESTS} SET firstexecutiontime=?,lastexecutiontime=?,server=?  WHERE file IS '{doyleFile.file}'", (doyleFile.firstExecutionTime, doyleFile.lastExecutionTime, doyleFile.server))
             c.close()
             self.db.commit()
             print(f"{doyleFile.file}: saved to db (exec time {doyleFile.firstExecutionTime} -> {doyleFile.lastExecutionTime} @ {doyleFile.server})")
@@ -252,7 +253,7 @@ class DoyleFileDb(threading.Thread):
 
     def _addQueuedCount(self, timestamp, count):
         c = self.db.cursor()
-        c.execute(f"INSERT INTO {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp,queuecount) VALUES (?, ?)",(timestamp,count) )
+        c.execute(f"INSERT INTO {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp,queuecount) VALUES (?, ?)", (timestamp, count))
         c.close()
         self.db.commit()
         print(f"{count} at {timestamp} : inserted in db")
@@ -285,17 +286,17 @@ class DoyleFileDb(threading.Thread):
         """ Get chart date (min/avg/max) for the number of tests queued in the requested timespan."""
         start = timer()
 
-        chartData=[]
-        fromTimeStamp,toTimeStamp  = startTimeStamp,startTimeStamp + incrementTimeDelta
+        chartData = []
+        fromTimeStamp, toTimeStamp = startTimeStamp, startTimeStamp + incrementTimeDelta
         for h in range(count):
             c = self.db.cursor()
             c.execute("SELECT queuecount FROM queue_counts WHERE timestamp BETWEEN ? AND ?", (fromTimeStamp, toTimeStamp))
             result = c.fetchall()
             c.close()
             counts = [r[0] for r in result]
-            if len(counts)!=0:
-                chartData.append((fromTimeStamp,min(counts),int(statistics.mean(counts)),max(counts)))
-            fromTimeStamp,toTimeStamp = toTimeStamp,toTimeStamp+incrementTimeDelta
+            if len(counts) != 0:
+                chartData.append((fromTimeStamp, min(counts), int(statistics.mean(counts)), max(counts)))
+            fromTimeStamp, toTimeStamp = toTimeStamp, toTimeStamp + incrementTimeDelta
 
         end = timer()
         print(f"Got {len(chartData)} from db, took {end - start}s")
@@ -375,17 +376,16 @@ class DoyleFileDb(threading.Thread):
         try:
             # backup to db on local folder, cannot create a db on a share
             backupFileName = f"doyledb-{time.strftime('%Y%m%d-%H%M%S')}.db"
-            tmpFile = os.path.join(self.dbFilePath,backupFileName)
+            tmpFile = os.path.join(self.dbFilePath, backupFileName)
             print(f"Backing up database to {tmpFile}")
-            backup_db=sqlite3.connect(tmpFile)
+            backup_db = sqlite3.connect(tmpFile)
             self.db.backup(backup_db)
             backup_db.close()
             print(f"Backing up database done")
 
             # now move the file to where it should have been
-            tgtFile = os.path.join(self.dbBackupPath,backupFileName)
-            shutil.move(tmpFile,tgtFile)
+            tgtFile = os.path.join(self.dbBackupPath, backupFileName)
+            shutil.move(tmpFile, tgtFile)
             print(f"Moved backup file to {tgtFile}")
         except:
             print(f"Backing up database failed: {traceback.format_exc()}")
-

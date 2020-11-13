@@ -18,17 +18,20 @@ from app.doyleresult import DoyleResult
 
 serverBlackList = ["DOYLE-CORDOVA", "VM-DOYLE-YUI", "VM-DOYLE-22"]
 
+
 @dataclass
 class FolderConfiguration:
-    testFilesRoot:str
-    databasePath:str
-    databaseBackupPath:str
+    testFilesRoot: str
+    databasePath: str
+    databaseBackupPath: str
 
-onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle","/tmp","/mnt/udrive/Doyle/Databases")
-onWindowsReal = FolderConfiguration("U:\\Doyle",".","U:\\Doyle\\Db")
-onLinuxTest = FolderConfiguration("./TestData","/tmp","/tmp/Db")
-onWindowsTest = FolderConfiguration(".\\TestData",".\\TestData",".\\TestData\\Db")
-onDocker = FolderConfiguration("/usr/src/DoyleData","/tmp","/tmp/Db")
+
+onLinuxReal = FolderConfiguration("/mnt/udrive/Doyle", "/tmp", "/mnt/udrive/Doyle/Databases")
+onWindowsReal = FolderConfiguration("U:\\Doyle", ".", "U:\\Doyle\\Db")
+onLinuxTest = FolderConfiguration("./TestData", "/tmp", "/tmp/Db")
+onWindowsTest = FolderConfiguration(".\\TestData", ".\\TestData", ".\\TestData\\Db")
+onDocker = FolderConfiguration("/usr/src/DoyleData", "/tmp", "/tmp/Db")
+
 
 class DoyleInfo(threading.Thread):
     """ Main class that keeps and updates test info for queues and servers."""
@@ -36,11 +39,10 @@ class DoyleInfo(threading.Thread):
     def __init__(self):
 
         # find out which folder configuration to take
-        for config in [onLinuxReal,onWindowsReal,onLinuxTest,onWindowsTest,onDocker]:
+        for config in [onLinuxReal, onWindowsReal, onLinuxTest, onWindowsTest, onDocker]:
             print(f"Trying: {config}")
             print(f"isdir {config.testFilesRoot}: {os.path.isdir(config.testFilesRoot)}")
             print(f"isdir {config.databasePath}: {os.path.isdir(config.databasePath)}")
-
 
             if os.path.isdir(config.testFilesRoot) and os.path.isdir(config.databasePath):
                 print(f"Getting doyle info from    : {config.testFilesRoot}")
@@ -59,7 +61,7 @@ class DoyleInfo(threading.Thread):
         self._clean()
 
         # create file database and pass it (as a static) to DoyleFile
-        self.doyleFileDb = DoyleFileDb(self.folderConfig.databasePath,self.folderConfig.databaseBackupPath)
+        self.doyleFileDb = DoyleFileDb(self.folderConfig.databasePath, self.folderConfig.databaseBackupPath)
         DoyleFile.doyleFileDb = self.doyleFileDb
 
         self.keepRunning = True
@@ -245,7 +247,11 @@ class DoyleInfo(threading.Thread):
                         "%s (%s)" % (self.ageToString(age), self.ageToString(datetime.timedelta(seconds=doyleFile.expectedExecutionTime[0]))),
                         (server, doyleFile.queue),
                         "#{0}".format(doyleFile.tfsbuildid) if doyleFile.tfsbuildid != 0 else "#----",
-                        ("/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]), doyleFile.file, "file:///u:/pgxbe/releases/" + "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]) + "/xbe_release.log",),
+                        (
+                            "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]),
+                            doyleFile.file,
+                            "file:///u:/pgxbe/releases/" + "/".join([doyleFile.xbetree, doyleFile.xbegroup, doyleFile.xbeproject, "{0:04}".format(doyleFile.xbebuildid)]) + "/xbe_release.log",
+                        ),
                         doyleFile.type,
                         doyleFile.target,
                     ]
@@ -369,5 +375,5 @@ class DoyleInfo(threading.Thread):
     def backupDatabase(self):
         self.backupDatabaseRequested = True
 
-    def getQueuedChartData(self,startTimeStamp,count,incrementTimeDelta):
-        return self.doyleFileDb.getQueuedChartData(startTimeStamp,count,incrementTimeDelta)
+    def getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
+        return self.doyleFileDb.getQueuedChartData(startTimeStamp, count, incrementTimeDelta)
