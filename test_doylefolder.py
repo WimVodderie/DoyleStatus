@@ -1,6 +1,8 @@
 from app import doylefolder
 from app import doylefile
 
+import os
+import tempfile
 
 class mocked_cache:
     def __init__(self):
@@ -30,8 +32,24 @@ class mocked_db:
 
 class TestDoyleFolder:
     def setup(self):
-        self.d = doylefolder.DoyleFolder(doylefolder.DoyleFolderType.queueFolder, "./TestData/TestQueues/")
+        # create a root folder with 5 sub folders and 3 testfiles each
+        self.tempRootDir = tempfile.TemporaryDirectory()
+        self.tempChildDirs = []
+        for _ in range(5):
+            self.tempChildDirs.append(tempfile.TemporaryDirectory(dir=self.tempRootDir.name))
+            for i in range(3):
+                with open(os.path.join(self.tempChildDirs[-1].name,f"testfile-{i}.sh"),"wt") as f:
+                    f.write('export XBEHOME="u:/pgxbe/releases/B999/InstallersDoyle/Kourou/42"\n')
+                    f.write(f'# TargetName: TestCase{i*100}\n')
+                    f.write(f'export tfsbuildid="12345"\n')
+                    f.write('# ScriptFile: testfile;A.sh\n')
+        self.d = doylefolder.DoyleFolder(doylefolder.DoyleFolderType.queueFolder, self.tempRootDir.name)
         doylefile.DoyleFile.doyleFileDb = mocked_db()
+
+    def teardown(self):
+        for td in self.tempChildDirs:
+            td.cleanup()
+        self.tempRootDir.cleanup()
 
     def test_init(self):
         assert len(self.d.items) == 0
@@ -40,6 +58,6 @@ class TestDoyleFolder:
     def test_update(self):
         m = mocked_cache()
         self.d.update(m)
-        assert len(self.d.items) == 10
-        assert self.d.count == 22
-        assert m.getCount == 22
+        assert len(self.d.items) == 5
+        assert self.d.count == 15
+        assert m.getCount == 15
