@@ -1,5 +1,6 @@
 import os
 import datetime
+import tempfile
 
 from app import doylefiledb
 
@@ -9,13 +10,12 @@ testDbBackupPath="/tmp"
 
 class TestDoyleQueueDb:
     def setup(self):
-        dbFile = f"{testDbPath}/{doylefiledb.DoyleFileDb.DBFILE_NAME}"
-        if os.path.exists(dbFile):
-            os.remove(dbFile)
-        self.d = doylefiledb.DoyleFileDb(testDbPath,testDbBackupPath)
+        self.dbPath = tempfile.TemporaryDirectory()
+        self.d = doylefiledb.DoyleFileDb(self.dbPath.name,self.dbPath.name)
 
     def teardown(self):
         self.d.quit()
+        self.dbPath.cleanup()
 
     def test_init(self):
         start_date=datetime.datetime(year=2000,month=1,day=1)

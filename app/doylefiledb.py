@@ -262,7 +262,7 @@ class DoyleFileDb(threading.Thread):
 
     def getQueuedCounts(self, fromtimestamp, totimestamp):
         res = Queue()
-        self.reqs.put(("getCounts", (fromtimestamp, totimestamp), res))
+        self.reqs.put(("getQueuedCounts", (fromtimestamp, totimestamp), res))
         return res.get()
 
     def _getQueuedCounts(self, fromtimestamp, totimestamp):
