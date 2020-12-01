@@ -375,8 +375,8 @@ class DoyleInfo(threading.Thread):
     def backupDatabase(self):
         self.backupDatabaseRequested = True
 
-    def getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
-        return self.doyleFileDb.getQueuedChartData(startTimeStamp, count, incrementTimeDelta)
+    def getQueuedChartData(self, date):
+        return self.doyleFileDb.getQueuedChartData(date)
 
     def getServerList(self):
         return self.doyleFileDb.getServerList()

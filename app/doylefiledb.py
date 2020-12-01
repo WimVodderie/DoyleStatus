@@ -1,8 +1,7 @@
 import datetime
 import operator
 import os
-from queue import Queue
-import statistics
+from queue import Queue, Empty
 import shutil
 import sqlite3
 import threading
@@ -12,11 +11,11 @@ import traceback
 # for measuring how long execution takes
 from timeit import default_timer as timer
 
+from app import queuecountsdb
 
 class DoyleFileDb(threading.Thread):
 
     TABLE_NAME_TESTS = "executed_tests"
-    TABLE_NAME_QUEUECOUNTS = "queue_counts"
     DBFILE_NAME = "doyle.db"
 
     def __init__(self, dbFilePath, dbBackupPath):
@@ -26,6 +25,7 @@ class DoyleFileDb(threading.Thread):
         self.dbBackupPath = dbBackupPath
         self.reqs = Queue()
         self.start()
+        self.queueCounts = None
 
     def run(self):
         self.db = sqlite3.connect(self.dbFile, detect_types=sqlite3.PARSE_DECLTYPES)
@@ -45,42 +45,43 @@ class DoyleFileDb(threading.Thread):
             self.db.execute(cmd)
             self.db.commit()
 
-        if DoyleFileDb.TABLE_NAME_QUEUECOUNTS not in table_names:
-            cmd = f"CREATE TABLE {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp TIMESTAMP, queuecount INTEGER)"
-            print(cmd)
-            self.db.execute(cmd)
-            self.db.commit()
+        # create queuecounts buffer
+        self.queueCounts = queuecountsdb.QueueCountsDb(self.db)
 
         while True:
-            req, arg, res = self.reqs.get()
+            try:
+                req, arg, res = self.reqs.get(timeout=1)
 
-            if req == "loadFile":
-                res.put(self._loadFile(arg))
-            if req == "addFile":
-                self._addFile(arg)
-            if req == "updateFile":
-                self._updateFile(arg)
-            if req == "getExecutionTimes":
-                res.put(self._getExecutionTimes(*arg))
-            if req == "getExpectedExecutionTime":
-                res.put(self._getExpectedExecutionTime(arg))
-            if req == "getDoyleHistory":
-                res.put(self._getDoyleHistory(*arg))
-            if req == "addQueuedCount":
-                self._addQueuedCount(*arg)
-            if req == "getQueuedCounts":
-                res.put(self._getQueuedCounts(*arg))
-            if req == "getQueuedChartData":
-                res.put(self._getQueuedChartData(*arg))
-            if req == "getServerList":
-                res.put(self._getServerList())
-            if req == "cleanupDatabase":
-                res.put(self._cleanupDatabase())
-            if req == "backupDatabase":
-                self._backupDatabase()
-            if req == "--close--":
-                break
+                if req == "loadFile":
+                    res.put(self._loadFile(arg))
+                if req == "addFile":
+                    self._addFile(arg)
+                if req == "updateFile":
+                    self._updateFile(arg)
+                if req == "getExecutionTimes":
+                    res.put(self._getExecutionTimes(*arg))
+                if req == "getExpectedExecutionTime":
+                    res.put(self._getExpectedExecutionTime(arg))
+                if req == "getDoyleHistory":
+                    res.put(self._getDoyleHistory(*arg))
+                if req == "addQueuedCount":
+                    self.queueCounts.add(*arg)
+                if req == "getQueuedChartData":
+                    res.put(self.queueCounts.getChartData(arg))
+                if req == "getServerList":
+                    res.put(self._getServerList())
+                if req == "cleanupDatabase":
+                    res.put(self._cleanupDatabase())
+                if req == "backupDatabase":
+                    self._backupDatabase()
+                if req == "--close--":
+                    break
+            except Empty:
+                # nothing to do, do some maintenance
+                if self.queueCounts.conversionNeeded:
+                    self.queueCounts.convertOldData()
 
+        # cleanup
         self.db.close()
 
     def quit(self):
@@ -253,56 +254,10 @@ class DoyleFileDb(threading.Thread):
     def addQueuedCount(self, timestamp, count):
         self.reqs.put(("addQueuedCount", (timestamp, count), None))
 
-    def _addQueuedCount(self, timestamp, count):
-        c = self.db.cursor()
-        c.execute(f"INSERT INTO {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} (timestamp,queuecount) VALUES (?, ?)", (timestamp, count))
-        c.close()
-        self.db.commit()
-        print(f"{count} at {timestamp} : inserted in db")
-
-    def getQueuedCounts(self, fromtimestamp, totimestamp):
+    def getQueuedChartData(self, date):
         res = Queue()
-        self.reqs.put(("getQueuedCounts", (fromtimestamp, totimestamp), res))
+        self.reqs.put(("getQueuedChartData", (date), res))
         return res.get()
-
-    def _getQueuedCounts(self, fromtimestamp, totimestamp):
-        """ Get a list of queued test counts between the two timestamps."""
-        start = timer()
-
-        c = self.db.cursor()
-        c.execute(f'SELECT * FROM {DoyleFileDb.TABLE_NAME_QUEUECOUNTS} WHERE timestamp > "{fromtimestamp}" AND timestamp < "{totimestamp}"')
-        entries = c.fetchall()
-        c.close()
-
-        end = timer()
-        print(f"Got {len(entries)} from db, took {end - start}s")
-
-        return entries
-
-    def getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
-        res = Queue()
-        self.reqs.put(("getQueuedChartData", (startTimeStamp, count, incrementTimeDelta), res))
-        return res.get()
-
-    def _getQueuedChartData(self, startTimeStamp, count, incrementTimeDelta):
-        """ Get chart date (min/avg/max) for the number of tests queued in the requested timespan."""
-        start = timer()
-
-        chartData = []
-        fromTimeStamp, toTimeStamp = startTimeStamp, startTimeStamp + incrementTimeDelta
-        for h in range(count):
-            c = self.db.cursor()
-            c.execute("SELECT queuecount FROM queue_counts WHERE timestamp BETWEEN ? AND ?", (fromTimeStamp, toTimeStamp))
-            result = c.fetchall()
-            c.close()
-            counts = [r[0] for r in result]
-            if len(counts) != 0:
-                chartData.append((fromTimeStamp, min(counts), int(statistics.mean(counts)), max(counts)))
-            fromTimeStamp, toTimeStamp = toTimeStamp, toTimeStamp + incrementTimeDelta
-
-        end = timer()
-        print(f"Got {len(chartData)} from db, took {end - start}s")
-        return chartData
 
     def getServerList(self):
         res = Queue()

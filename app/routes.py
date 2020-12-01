@@ -110,7 +110,7 @@ def queuedChart():
 
     # when new date has been selected, get new data
     if newDate != lastSelectedDate:
-        lastCounts = doyleStatusApp.doyleInfo.getQueuedChartData(datetime.datetime.combine(form.startDate.data, datetime.time(0)), 24, datetime.timedelta(hours=1))
+        lastCounts = doyleStatusApp.doyleInfo.getQueuedChartData(form.startDate.data)
         lastSelectedDate = newDate
 
     return render_template("queuedChart.html", date=lastSelectedDate, counts=lastCounts, form=form)
