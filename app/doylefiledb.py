@@ -7,6 +7,7 @@ import sqlite3
 import threading
 import time
 import traceback
+import statistics
 
 # for measuring how long execution takes
 from timeit import default_timer as timer
