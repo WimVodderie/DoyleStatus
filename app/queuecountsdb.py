@@ -31,23 +31,26 @@ class QueueCountsDb:
 
         # new table that stores min/max/sum per date / hour
         if QueueCountsDb.TABLE_NAME_QUEUECOUNTS2 not in table_names:
-            self.db.execute(f"CREATE TABLE {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} (date DATE, hour INTEGER, min INTEGER, max INTEGER, count INTEGER, sum INTEGER)")
+            self.db.execute(f"CREATE TABLE {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} (datehour TIMESTAMP, min INTEGER, max INTEGER, count INTEGER, sum INTEGER)")
             self.db.commit()
 
     def add(self, timestamp, count , commit=True):
         """ Add a timestamp / count entry to the row for that date / hour."""
         try:
+            # we store the date and the hour in the database as a timestamp (date and time) so we clear the rest of the time part
+            datehour = datetime.datetime.combine(timestamp.date(),datetime.time(hour=timestamp.hour,minute=0,second=0))
+
             c = self.db.cursor()
-            c.execute(f"SELECT min,max,count,sum FROM {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} WHERE date = {timestamp.date()} AND hour = {timestamp.hour}")
+            c.execute(f"SELECT min,max,count,sum FROM {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} WHERE datehour = ?", (datehour,))
             result = c.fetchall()
             if len(result) == 0:
-                c.execute(f"INSERT INTO {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} (date,hour,min,max,count,sum) VALUES ({timestamp.date()},{timestamp.hour},{count},{count},1,{count})")
+                c.execute(f"INSERT INTO {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} (datehour,min,max,count,sum) VALUES (?,{count},{count},1,{count})", (datehour,))
             else:
                 new_min = result[0][0] if result[0][0] <= count else count
                 new_max = result[0][1] if result[0][1] >= count else count
                 new_count = result[0][2] + 1
                 new_sum = result[0][3] + count
-                c.execute(f"UPDATE {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} SET min=?,max=?,count=?,sum=? WHERE date = {timestamp.date()} AND hour = {timestamp.hour}", (new_min, new_max, new_count, new_sum))
+                c.execute(f"UPDATE {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} SET min=?,max=?,count=?,sum=? WHERE datehour = ?", (new_min, new_max, new_count, new_sum, datehour))
             c.close()
 
             if commit:
@@ -59,15 +62,19 @@ class QueueCountsDb:
         """ Get chart data (min/avg/max) for the number of tests queued on the requested day."""
         start = timer()
 
+        # date is stored in the database as a timestamp, containing date and hour
+        datehour_begin=datetime.datetime.combine(date,datetime.time(hour=0,minute=0,second=0))
+        datehour_end=datetime.datetime.combine(date,datetime.time(hour=23,minute=59,second=59))
+
         c = self.db.cursor()
-        c.execute(f"SELECT hour,min,max,count,sum FROM {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} WHERE date = {date}")
+        c.execute(f"SELECT datehour,min,max,count,sum FROM {QueueCountsDb.TABLE_NAME_QUEUECOUNTS2} WHERE datehour BETWEEN ? AND ?", (datehour_begin,datehour_end))
         result = c.fetchall()
         c.close()
 
         result.sort()
         chartData = []
         for r in result:
-            chartData.append((datetime.datetime.combine(date, datetime.time(r[0])), r[1], int(r[4] / r[3]), r[2]))
+            chartData.append((r[0], r[1], int(r[4] / r[3]), r[2]))
 
         end = timer()
         print(f"Got {len(chartData)} from db, took {end - start}s")
@@ -124,11 +131,16 @@ class QueueCountsDb:
 
 
 if __name__ == "__main__":
-    db = sqlite3.connect("/media/wim/DATA/Xeikon/doyledb-20201023-2111.db", detect_types=sqlite3.PARSE_DECLTYPES)
+    db = sqlite3.connect("C:\Projects\DoyleStatus\doyle.db", detect_types=sqlite3.PARSE_DECLTYPES)
 
     qc = QueueCountsDb(db)
 
-    while qc.conversionNeeded:
-        qc.convertOldData()
+    # while qc.conversionNeeded:
+    #     qc.convertOldData()
+
+    chartData = qc.getChartData(datetime.date(year=2020,month=11,day=14))
+
+    print(chartData)
+
 
     db.close()

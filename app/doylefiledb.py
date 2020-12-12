@@ -79,9 +79,8 @@ class DoyleFileDb(threading.Thread):
                     break
             except Empty:
                 # nothing to do, do some maintenance
-                # if self.queueCounts.conversionNeeded:
-                #     self.queueCounts.convertOldData()
-                pass
+                if self.queueCounts.conversionNeeded:
+                    self.queueCounts.convertOldData()
 
         # cleanup
         self.db.close()
