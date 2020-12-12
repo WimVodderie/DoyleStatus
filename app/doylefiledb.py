@@ -81,6 +81,7 @@ class DoyleFileDb(threading.Thread):
                 # nothing to do, do some maintenance
                 # if self.queueCounts.conversionNeeded:
                 #     self.queueCounts.convertOldData()
+                pass
 
         # cleanup
         self.db.close()
