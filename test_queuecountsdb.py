@@ -14,7 +14,6 @@ class TestQueueCountsDb:
         self.sut = queuecountsdb.QueueCountsDb(self.db)
 
     def teardown(self):
-        self.sut.flush()
         self.db.close()
         self.dbPath.cleanup()
 
