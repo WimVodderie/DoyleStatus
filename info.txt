@@ -28,6 +28,44 @@ or with coverage:
 even easier:
     py.test
 
+##
+## READ ONLY
+##
+
+https://medium.com/swlh/make-your-raspberry-pi-file-system-read-only-raspbian-buster-c558694de79
+
+sudo apt update
+sudp apt upgrade
+sudo apt remove --purge triggerhappy logrotate dphys-swapfile
+sudo apt autoremove --purge
+
+Edit the file /boot/cmdline.txt and add the following three words at the end of the line:
+    fastboot noswap ro
+This line should now look similar to this:
+    dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline rootwait fastboot noswap ro
+
+Replace your log manager, We want to avoid writing any system log files to the SD Card. Therefore we will remove the standard syslog output of log files to /var/log and instead replace it with the busybox in-memory logger:
+    sudo apt install busybox-syslogd
+    sudo apt remove --purge rsyslog
+From now on use sudo logread to check your system logs.
+
+Move some system files to temp filesystem
+sudo rm -rf /var/lib/dhcp /var/lib/dhcpcd5 /var/spool /etc/resolv.conf
+$ sudo ln -s /tmp /var/lib/dhcp
+$ sudo ln -s /tmp /var/lib/dhcpcd5
+$ sudo ln -s /tmp /var/spool
+$ sudo touch /tmp/dhcpcd.resolv.conf
+$ sudo ln -s /tmp/dhcpcd.resolv.conf /etc/resolv.conf
+
+
+/tmp is not rw for any user
+on rw version:
+    . drwxrwxrwt
+   .. drwxr xt xt
+other drwxrwxrwt
+
+-> add following to /etc/rc.local
+chmod a+trwx /etc
 
 ##
 ## DOCKER
